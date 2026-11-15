@@ -1,0 +1,734 @@
+<!doctype html>
+<title>DealDrop</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: price-tag motif. Sticky header with search, then route views: home (countdown + categories + top deals) → category list → product (store table + price-history chart). */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef0f4;
+  --line: #dde1e8;
+  --fg: #12151c;
+  --fg-2: #4a5160;
+  --muted: #747b8a;
+  --accent: #d1203a;        /* price-tag red */
+  --accent-ink: #ffffff;
+  --accent-soft: #fde8eb;
+  --good: #137a3f;
+  --good-soft: #e2f4e9;
+  --warn: #9a5b00;
+  --warn-soft: #fbefd9;
+  --chart-surface: #fcfcfb;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4;
+  --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1218; --surface: #171b23; --surface-2: #1f2430; --line: #2c3342;
+    --fg: #eef0f4; --fg-2: #b6bcc9; --muted: #8a92a3;
+    --accent: #ff4d63; --accent-ink: #16080b; --accent-soft: #3a1820;
+    --good: #4cc77f; --good-soft: #13301f; --warn: #f0b04a; --warn-soft: #33270f;
+    --chart-surface: #171b23;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1218; --surface: #171b23; --surface-2: #1f2430; --line: #2c3342;
+  --fg: #eef0f4; --fg-2: #b6bcc9; --muted: #8a92a3;
+  --accent: #ff4d63; --accent-ink: #16080b; --accent-soft: #3a1820;
+  --good: #4cc77f; --good-soft: #13301f; --warn: #f0b04a; --warn-soft: #33270f;
+  --chart-surface: #171b23;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 15px/1.5 var(--f-body);
+  -webkit-font-smoothing: antialiased;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--surface); }
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Header */
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line); }
+header.top .wrap { display: flex; align-items: center; gap: 16px; padding-block: 12px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.brand-tag {
+  font: 800 13px/1 var(--f-display); font-stretch: 85%; letter-spacing: .06em; text-transform: uppercase;
+  background: var(--accent); color: var(--accent-ink); padding: 7px 10px 7px 16px; position: relative;
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 10px 100%, 0 50%);
+}
+.brand-tag::before { content: ""; position: absolute; left: 7px; top: 50%; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%; background: var(--surface); }
+.brand-name { font: 800 20px/1 var(--f-display); font-stretch: 90%; letter-spacing: -.01em; }
+.search { flex: 1 1 260px; position: relative; min-width: 0; }
+.search input {
+  width: 100%; padding: 10px 14px 10px 38px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface-2); color: var(--fg); font: inherit; font-size: 14px;
+}
+.search svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+.search-results {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r); box-shadow: 0 12px 32px rgba(10, 14, 22, .16); max-height: 60vh; overflow: auto; z-index: 40;
+}
+.search-results a { display: flex; justify-content: space-between; gap: 12px; padding: 10px 14px; text-decoration: none; border-bottom: 1px solid var(--line); }
+.search-results a:last-child { border-bottom: 0; }
+.search-results a:hover, .search-results a.on { background: var(--surface-2); }
+.search-results small { color: var(--muted); display: block; }
+.search-results .empty { padding: 14px; color: var(--muted); }
+
+nav.cats { border-top: 1px solid var(--line); }
+nav.cats .wrap { display: flex; flex-wrap: nowrap; gap: 4px; overflow-x: auto; padding-block: 6px; scrollbar-width: none; }
+nav.cats a { white-space: nowrap; text-decoration: none; font-size: 13px; font-weight: 500; color: var(--fg-2); padding: 6px 12px; border-radius: 999px; }
+nav.cats a:hover { background: var(--surface-2); color: var(--fg); }
+nav.cats a.on { background: var(--fg); color: var(--bg); }
+
+main { padding-block: 24px 64px; }
+.crumbs { font-size: 13px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.crumbs a { color: var(--fg-2); text-decoration: none; }
+.crumbs a:hover { text-decoration: underline; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 52px); font-weight: 900; font-stretch: 80%; line-height: .98; letter-spacing: -.01em; }
+h2 { font-size: 22px; font-weight: 800; font-stretch: 90%; }
+.eyebrow { font: 600 12px/1 var(--f-body); letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+.sub { color: var(--fg-2); max-width: 62ch; }
+section + section { margin-top: 40px; }
+.sec-head { display: flex; align-items: end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.sec-head p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+
+/* Hero */
+.hero { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; align-items: stretch; }
+.hero-copy { display: flex; flex-direction: column; gap: 14px; justify-content: center; }
+.countdown { background: var(--fg); color: var(--bg); border-radius: var(--r); padding: 24px 20px; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+.countdown .lbl { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; opacity: .7; }
+.cd-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.cd-row div { text-align: center; }
+.cd-row b { display: block; font: 700 clamp(26px, 4vw, 38px)/1 var(--f-mono); font-variant-numeric: tabular-nums; }
+.cd-row span { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; opacity: .65; }
+.stats { display: flex; gap: 22px; flex-wrap: wrap; font-size: 13px; color: var(--fg-2); }
+.stats b { display: block; font: 700 22px/1.1 var(--f-mono); color: var(--fg); }
+.sample-note { font-size: 12px; color: var(--muted); }
+
+/* Category grid */
+.cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+@media (max-width: 560px) { .cat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.cat-card {
+  display: flex; flex-direction: column; gap: 10px; padding: 16px; text-decoration: none; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--r); transition: border-color .15s, transform .15s;
+}
+.cat-card:hover { border-color: var(--fg-2); transform: translateY(-2px); }
+.cat-card .ico { width: 40px; height: 40px; border-radius: 10px; background: var(--surface-2); display: grid; place-items: center; color: var(--fg); }
+.cat-card h3 { font-size: 17px; font-weight: 800; font-stretch: 92%; }
+.cat-card .meta { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: var(--muted); }
+.cat-card .meta b { color: var(--accent); font-family: var(--f-mono); font-size: 15px; }
+
+/* Deal list */
+.deals { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.deal {
+  position: relative; display: flex; flex-direction: column; gap: 10px; padding: 16px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--r); text-decoration: none; transition: border-color .15s;
+}
+.deal:hover { border-color: var(--fg-2); }
+.deal-top { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
+.thumb { width: 54px; height: 54px; border-radius: 10px; background: var(--surface-2); display: grid; place-items: center; flex: none; color: var(--fg-2); }
+.tag {
+  font: 700 14px/1 var(--f-mono); background: var(--accent); color: var(--accent-ink); padding: 6px 8px 6px 14px; white-space: nowrap;
+  clip-path: polygon(8px 0, 100% 0, 100% 100%, 8px 100%, 0 50%); position: relative;
+}
+.tag::before { content: ""; position: absolute; left: 5px; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--surface); }
+.deal h3 { font: 600 15px/1.3 var(--f-body); }
+.deal .brandline { font-size: 12px; color: var(--muted); }
+.price-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+.price { font: 700 20px/1 var(--f-mono); font-variant-numeric: tabular-nums; }
+.was { font: 500 13px/1 var(--f-mono); color: var(--muted); text-decoration: line-through; }
+.at { font-size: 12px; color: var(--fg-2); display: flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.spark { width: 100%; height: 34px; display: block; }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.neutral { background: var(--surface-2); color: var(--fg-2); }
+
+/* Toolbar */
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+.seg { display: inline-flex; background: var(--surface-2); border-radius: 999px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+.seg button { border: 0; background: none; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 500; color: var(--fg-2); cursor: pointer; }
+.seg button.on { background: var(--surface); color: var(--fg); box-shadow: 0 1px 3px rgba(10, 14, 22, .12); }
+.toolbar label { font-size: 13px; color: var(--muted); }
+select { font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+
+/* Product page */
+.p-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: start; margin-bottom: 24px; }
+.p-head h1 { font-size: clamp(26px, 4vw, 40px); font-stretch: 85%; }
+.best-box { background: var(--surface); border: 2px solid var(--accent); border-radius: var(--r); padding: 16px 18px; min-width: 240px; display: flex; flex-direction: column; gap: 8px; }
+.best-box .lbl { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.best-box .price { font-size: 32px; }
+.best-box .store { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.btn { display: inline-flex; justify-content: center; align-items: center; gap: 6px; text-decoration: none; background: var(--accent); color: var(--accent-ink); font-weight: 600; font-size: 14px; padding: 10px 14px; border-radius: 8px; border: 0; cursor: pointer; }
+.p-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; min-width: 0; }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; }
+.kpi small { display: block; font-size: 12px; color: var(--muted); }
+.kpi b { font: 700 20px/1.3 var(--f-mono); font-variant-numeric: tabular-nums; }
+.kpi span { display: block; font-size: 12px; color: var(--fg-2); }
+.verdict { display: flex; gap: 12px; align-items: start; padding: 14px 16px; border-radius: var(--r); }
+.verdict.good { background: var(--good-soft); color: var(--good); }
+.verdict.warn { background: var(--warn-soft); color: var(--warn); }
+.verdict p { margin: 2px 0 0; color: var(--fg-2); font-size: 14px; }
+.verdict strong { font-size: 15px; }
+
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 12px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.r, th.r { text-align: right; }
+tr.best td { background: var(--accent-soft); }
+tr.best td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.store-cell { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.badge { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; background: var(--accent); color: var(--accent-ink); padding: 2px 6px; border-radius: 4px; }
+.disc { font: 700 14px/1 var(--f-mono); color: var(--accent); }
+
+/* Chart */
+.chart-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.legend { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.legend button { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; color: var(--fg); }
+.legend button.off { opacity: .45; }
+.legend button.off .dot { background: transparent !important; box-shadow: inset 0 0 0 2px var(--muted); }
+.chart { position: relative; background: var(--chart-surface); }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart text { fill: var(--muted); font: 11px var(--f-mono); }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .bf { fill: var(--accent-soft); }
+.chart .bf-lbl { fill: var(--accent); font-weight: 700; }
+.chart .msrp { stroke: var(--fg-2); stroke-dasharray: 4 4; stroke-width: 1; }
+.chart .cross { stroke: var(--fg-2); stroke-width: 1; }
+.tip {
+  position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; font-size: 12.5px; box-shadow: 0 8px 24px rgba(10, 14, 22, .18); min-width: 170px; z-index: 5;
+}
+.tip .d { font-weight: 600; margin-bottom: 6px; }
+.tip .row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.tip .row span:first-child { display: flex; align-items: center; gap: 6px; color: var(--fg-2); }
+.tip .row b { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+
+.related { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+footer .wrap { padding-block: 20px; }
+
+@media (max-width: 820px) {
+  .hero, .p-head { grid-template-columns: minmax(0, 1fr); }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .best-box { min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#home" aria-label="DealDrop home">
+      <span class="brand-tag">Black Friday</span>
+      <span class="brand-name">DealDrop</span>
+    </a>
+    <div class="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Search products, brands, categories" autocomplete="off" aria-label="Search deals">
+      <div class="search-results" id="results" hidden></div>
+    </div>
+  </div>
+  <nav class="cats" aria-label="Categories"><div class="wrap" id="catnav"></div></nav>
+</header>
+
+<main class="wrap" id="view"></main>
+
+<footer><div class="wrap">Prices are sample data generated for this demo, shown as of Nov 15, 2026. Discount = savings against the manufacturer's list price (MSRP). The 90-day low checks whether a "deal" is really the cheapest the item has been.</div></footer>
+
+<script>
+(() => {
+  /* ---------- deterministic sample data ---------- */
+  let seed = 20261127;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
+  const pick = a => a[Math.floor(rnd() * a.length)];
+
+  const TODAY = new Date(2026, 10, 15);
+  const BF = new Date(2026, 10, 27);
+  const DAYS = 90;
+  const dateAt = i => { const d = new Date(TODAY); d.setDate(d.getDate() - (DAYS - 1 - i)); return d; };
+  const fmtDate = d => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+  const STORES = [
+    { id: "northgate", name: "Northgate", c: "--s1" },
+    { id: "voltmart", name: "Voltmart", c: "--s2" },
+    { id: "shopridge", name: "ShopRidge", c: "--s3" },
+    { id: "kestrel", name: "Kestrel & Co", c: "--s4" },
+    { id: "bazaarly", name: "Bazaarly", c: "--s5" },
+  ];
+  const storeById = Object.fromEntries(STORES.map(s => [s.id, s]));
+
+  const ICONS = {
+    tv: '<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
+    laptop: '<rect x="4" y="4" width="16" height="11" rx="1.5"/><path d="M2 19h20"/>',
+    phone: '<rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/>',
+    game: '<path d="M6 11h4M8 9v4M15 12h.01M18 10h.01"/><rect x="2" y="6" width="20" height="12" rx="6"/>',
+    audio: '<path d="M3 14v-2a9 9 0 0 1 18 0v2"/><rect x="3" y="14" width="4" height="7" rx="1.5"/><rect x="17" y="14" width="4" height="7" rx="1.5"/>',
+    home: '<path d="M4 11 12 4l8 7v9H4z"/><path d="M10 20v-5h4v5"/>',
+    kitchen: '<path d="M6 3v8a3 3 0 0 0 6 0V3M9 3v18M17 3c-2 2-2 6 0 8v10"/>',
+    fashion: '<path d="M8 3 4 6l2 4 2-1v12h8V9l2 1 2-4-4-3c0 2-2 3-4 3S8 5 8 3z"/>',
+    beauty: '<rect x="9" y="9" width="6" height="12" rx="1"/><path d="M10 9V5l4-2v6"/>',
+    toys: '<circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/>',
+    sports: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17l4-8h5l3 8M10 9 8 5h3"/>',
+    watch: '<rect x="6" y="6" width="12" height="12" rx="3"/><path d="M9 6V2h6v4M9 18v4h6v-4M12 10v2l1.5 1.5"/>',
+  };
+  const icon = (k, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k]}</svg>`;
+
+  const CATS = [
+    { id: "tvs", name: "TVs & Displays", ico: "tv", items: [
+      ["Aurion", "65\" OLED evo 4K Smart TV", 1999], ["Lumetra", "55\" QLED 4K 144Hz TV", 899], ["Corvex", "75\" Mini-LED 4K Google TV", 1499],
+      ["Halden", "43\" 4K UHD Fire TV", 349], ["Aurion", "27\" 4K IPS Monitor", 429], ["Lumetra", "34\" Curved Ultrawide Monitor", 599], ["Corvex", "Laser Projector 4K", 2299] ] },
+    { id: "laptops", name: "Laptops & Tablets", ico: "laptop", items: [
+      ["Novaline", "Air 13\" M-class Laptop 16GB", 1099], ["Pivotek", "Gaming Laptop RTX 16\"", 1799], ["Novaline", "Pro 14\" Creator Laptop", 1999],
+      ["Brisa", "2-in-1 Chromebook 12\"", 449], ["Pivotek", "Tablet 11\" 128GB", 499], ["Brisa", "E-reader 7\" Paperwhite", 179], ["Halden", "Ultrabook 15\" OLED", 1299] ] },
+    { id: "phones", name: "Phones & Wearables", ico: "phone", items: [
+      ["Kova", "Pixelite 10 Pro 256GB", 999], ["Orbis", "Galaxy-class S Ultra 512GB", 1299], ["Kova", "Lite 5G 128GB", 499],
+      ["Orbis", "Foldable Flip 256GB", 1099], ["Tempo", "Smartwatch Series 9 45mm", 429], ["Tempo", "Fitness Band 6", 149], ["Kova", "Wireless Earbuds Pro 2", 249] ] },
+    { id: "gaming", name: "Gaming", ico: "game", items: [
+      ["Arkade", "Console X 1TB Bundle", 549], ["Arkade", "Handheld OLED Console", 349], ["Volta", "Wireless Pro Controller", 79],
+      ["Volta", "Gaming Headset 7.1", 159], ["Pivotek", "Mechanical Keyboard TKL", 139], ["Pivotek", "Ultralight Gaming Mouse", 99], ["Arkade", "VR Headset 256GB", 499] ] },
+    { id: "audio", name: "Audio", ico: "audio", items: [
+      ["Sonare", "Noise-Cancelling Headphones 1000", 399], ["Sonare", "Soundbar 5.1 with Sub", 699], ["Ripple", "Portable Speaker Boom 4", 149],
+      ["Ripple", "Smart Speaker Mini", 59], ["Sonare", "Turntable Bluetooth", 299], ["Kova", "Open-Ear Sport Earbuds", 179] ] },
+    { id: "home", name: "Smart Home", ico: "home", items: [
+      ["Hearth", "Video Doorbell 4", 229], ["Hearth", "Smart Thermostat 3rd Gen", 249], ["Brisa", "Mesh Wi-Fi 6E (3-pack)", 449],
+      ["Lumetra", "Smart Bulb Starter Kit", 199], ["Hearth", "Indoor Security Cam 2K", 79], ["Cleanly", "Robot Vacuum + Mop S8", 899] ] },
+    { id: "kitchen", name: "Kitchen & Appliances", ico: "kitchen", items: [
+      ["Ferro", "Air Fryer XL 6qt", 149], ["Ferro", "Multi-Cooker 8qt 9-in-1", 139], ["Crema", "Espresso Machine Barista", 699],
+      ["Crema", "Pod Coffee Maker", 179], ["Ferro", "Stand Mixer 5qt", 449], ["Cleanly", "Cordless Stick Vacuum V12", 649], ["Ferro", "High-Speed Blender", 399] ] },
+    { id: "fashion", name: "Fashion & Shoes", ico: "fashion", items: [
+      ["Strada", "Running Shoes Pegasus-class", 140], ["Strada", "Down Puffer Jacket", 280], ["Marlow", "Leather Weekender Bag", 320],
+      ["Marlow", "Merino Crew Sweater", 128], ["Strada", "Classic Leather Sneakers", 110], ["Tempo", "Polarized Sunglasses", 189] ] },
+    { id: "beauty", name: "Beauty & Care", ico: "beauty", items: [
+      ["Lumi", "Hair Dryer Supersonic-style", 429], ["Lumi", "Hot Air Styler Set", 599], ["Vela", "Electric Toothbrush 9900", 279],
+      ["Vela", "Facial Cleansing Device", 199], ["Lumi", "Fragrance Gift Set 100ml", 150], ["Vela", "Precision Beard Trimmer", 89] ] },
+    { id: "toys", name: "Toys & Kids", ico: "toys", items: [
+      ["Brickly", "Starship Builder Set 1,300 pcs", 169], ["Brickly", "Botanical Collection Set", 59], ["Wonda", "Kids Tablet 10\" Edition", 199],
+      ["Wonda", "Ride-On Electric Car", 299], ["Brickly", "Race Car Technic Set", 449], ["Wonda", "Interactive Plush Pet", 69] ] },
+    { id: "watches", name: "Watches & Jewelry", ico: "watch", items: [
+      ["Halden", "Automatic Dive Watch 42mm", 649], ["Marlow", "Sterling Silver Chain 20\"", 189], ["Tempo", "Solar Field Watch", 229],
+      ["Marlow", "Lab Diamond Stud Earrings", 899], ["Halden", "Chronograph Steel Bracelet", 399], ["Tempo", "Hybrid Smart Watch 38mm", 199] ] },
+    { id: "sports", name: "Sports & Outdoors", ico: "sports", items: [
+      ["Peakline", "Smart Indoor Bike", 1499], ["Peakline", "Adjustable Dumbbells 52lb", 429], ["Trailo", "4-Person Camping Tent", 349],
+      ["Trailo", "Insulated Bottle 32oz", 45], ["Peakline", "Massage Gun Pro", 299], ["Trailo", "E-Scooter 25mi Range", 799] ] },
+  ];
+
+  const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const round99 = v => v < 20 ? Math.round(v * 100) / 100 : Math.max(1, Math.round(v)) - 0.01;
+
+  const PRODUCTS = [];
+  CATS.forEach(cat => {
+    cat.items.forEach(([brand, name, msrp]) => {
+      const nStores = 3 + Math.floor(rnd() * 3);
+      const pool = [...STORES].sort(() => rnd() - 0.5).slice(0, nStores).sort((a, b) => STORES.indexOf(a) - STORES.indexOf(b));
+      const depth = 0.12 + rnd() * 0.42;         // how deep the BF discount goes for this item
+      const fakeStore = rnd() < 0.45 ? pick(pool).id : null; // one store inflates its price before "discounting"
+      const offers = pool.map(st => {
+        let base = msrp * (0.9 + rnd() * 0.1);
+        const hist = [];
+        const promoDay = Math.floor(rnd() * 60);
+        const promoLen = 4 + Math.floor(rnd() * 6);
+        const promoCut = rnd() < 0.3 ? Math.min(0.65, depth * (0.95 + rnd() * 0.4)) : 0.05 + rnd() * 0.18;
+        const earlyStart = 72 + Math.floor(rnd() * 14);
+        const myDepth = Math.min(0.7, depth * (0.65 + rnd() * 0.5));
+        for (let i = 0; i < DAYS; i++) {
+          let p = base;
+          if (i % 9 === 0) base = msrp * (0.88 + rnd() * 0.12);
+          if (i >= promoDay && i < promoDay + promoLen) p = base * (1 - promoCut);
+          if (st.id === fakeStore && i >= 50 && i < earlyStart) p = msrp * 1.08;
+          if (i >= earlyStart) p = msrp * (1 - myDepth * (i >= 86 ? 1 : 0.8));
+          hist.push(round99(p));
+        }
+        const now = hist[DAYS - 1];
+        return { store: st.id, hist, now, disc: (msrp - now) / msrp, low90: Math.min(...hist) };
+      }).sort((a, b) => a.now - b.now);
+      const best = offers[0];
+      const low90 = Math.min(...offers.map(o => Math.min(...o.hist.slice(0, DAYS - 1))));
+      PRODUCTS.push({
+        id: slug(brand + " " + name).slice(0, 48), cat: cat.id, brand, name, msrp, ico: cat.ico,
+        offers, best, low90, disc: best.disc, save: msrp - best.now,
+      });
+    });
+  });
+  const byId = Object.fromEntries(PRODUCTS.map(p => [p.id, p]));
+  const catById = Object.fromEntries(CATS.map(c => [c.id, c]));
+
+  /* ---------- helpers ---------- */
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const money = v => "$" + v.toLocaleString("en-US", { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
+  const pct = v => Math.round(v * 100) + "%";
+  const cvar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const storeDot = id => `<span class="dot" style="background:var(${storeById[id].c})"></span>`;
+
+  const verdictOf = p => {
+    const now = p.best.now;
+    if (now <= p.low90 + 0.01) return { k: "good", t: "Lowest in 90 days" };
+    if (now <= p.low90 * 1.04) return { k: "neutral", t: "Near 90-day low" };
+    return { k: "warn", t: "Was cheaper before" };
+  };
+
+  const sparkline = (p, w = 240, h = 34) => {
+    const series = p.best.hist;
+    const lo = Math.min(...series), hi = Math.max(...series, p.msrp);
+    const x = i => (i / (DAYS - 1)) * w, y = v => h - 3 - ((v - lo) / (hi - lo || 1)) * (h - 6);
+    const d = series.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
+    return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+      <path d="${d}L${w},${h}L0,${h}Z" fill="var(${storeById[p.best.store].c})" opacity=".12"/>
+      <path d="${d}" fill="none" stroke="var(${storeById[p.best.store].c})" stroke-width="2" vector-effect="non-scaling-stroke"/>
+    </svg>`;
+  };
+
+  const dealCard = p => {
+    const v = verdictOf(p);
+    return `<a class="deal" href="#p-${p.id}">
+      <div class="deal-top"><div class="thumb">${icon(p.ico, 26)}</div><span class="tag">-${pct(p.disc)}</span></div>
+      <div><div class="brandline">${esc(p.brand)} · ${esc(catById[p.cat].name)}</div><h3>${esc(p.name)}</h3></div>
+      ${sparkline(p)}
+      <div class="price-row"><span class="price">${money(p.best.now)}</span><span class="was">${money(p.msrp)}</span></div>
+      <div class="deal-top" style="align-items:center"><span class="at">${storeDot(p.best.store)}Best at ${storeById[p.best.store].name}</span><span class="pill ${v.k}">${v.t}</span></div>
+    </a>`;
+  };
+
+  /* ---------- views ---------- */
+  const catNav = active => {
+    $("#catnav").innerHTML = `<a href="#home" class="${!active ? "on" : ""}">All deals</a>` +
+      CATS.map(c => `<a href="#c-${c.id}" class="${active === c.id ? "on" : ""}">${esc(c.name)}</a>`).join("");
+    const on = $("#catnav .on"); if (on && active) on.scrollIntoView({ block: "nearest", inline: "center" });
+  };
+
+  let homeSort = "disc";
+  const viewHome = () => {
+    catNav(null);
+    const top = [...PRODUCTS].sort((a, b) => homeSort === "save" ? b.save - a.save : b.disc - a.disc).slice(0, 12);
+    const avg = PRODUCTS.reduce((s, p) => s + p.disc, 0) / PRODUCTS.length;
+    const maxD = Math.max(...PRODUCTS.map(p => p.disc));
+    const real = PRODUCTS.filter(p => verdictOf(p).k === "good").length;
+    $("#view").innerHTML = `
+      <section class="hero">
+        <div class="hero-copy">
+          <span class="eyebrow">Black Friday 2026 · live tracker</span>
+          <h1>The deepest markdowns, store by store.</h1>
+          <p class="sub">We track ${PRODUCTS.length} popular products across ${STORES.length} stores and rank them by discount off list price. Open any product to see 90 days of price history and which store is cheapest right now.</p>
+          <div class="stats">
+            <div><b class="num">${pct(maxD)}</b>biggest discount</div>
+            <div><b class="num">${pct(avg)}</b>average off MSRP</div>
+            <div><b class="num">${real}</b>at a 90-day low</div>
+          </div>
+        </div>
+        <div class="countdown" aria-live="polite">
+          <span class="lbl">Black Friday starts in</span>
+          <div class="cd-row" id="cd"></div>
+          <span class="lbl" style="opacity:.6">Friday, Nov 27 · early deals are live</span>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-head"><div><h2>Shop by category</h2><p>Pick a category to see every tracked product, sorted by discount.</p></div></div>
+        <div class="cat-grid">${CATS.map(c => {
+          const ps = PRODUCTS.filter(p => p.cat === c.id);
+          return `<a class="cat-card" href="#c-${c.id}"><div class="ico">${icon(c.ico)}</div><h3>${esc(c.name)}</h3>
+            <div class="meta"><span>${ps.length} deals</span><span>up to <b>-${pct(Math.max(...ps.map(p => p.disc)))}</b></span></div></a>`;
+        }).join("")}</div>
+      </section>
+
+      <section>
+        <div class="sec-head">
+          <div><h2>Highest discounts right now</h2><p>Top 12 across every category, best store price shown.</p></div>
+          <div class="seg" role="group" aria-label="Sort top deals">
+            <button data-hs="disc" class="${homeSort === "disc" ? "on" : ""}">% off</button>
+            <button data-hs="save" class="${homeSort === "save" ? "on" : ""}">$ saved</button>
+          </div>
+        </div>
+        <div class="deals">${top.map(dealCard).join("")}</div>
+      </section>
+      <p class="sample-note" style="margin-top:24px">Demo build: products, stores and prices are sample data.</p>`;
+    document.querySelectorAll("[data-hs]").forEach(b => b.onclick = () => { homeSort = b.dataset.hs; viewHome(); });
+    tick();
+  };
+
+  const catState = { sort: "disc", store: "all", realOnly: false };
+  const viewCat = id => {
+    const c = catById[id]; if (!c) return viewHome();
+    catNav(id);
+    const render = () => {
+      let ps = PRODUCTS.filter(p => p.cat === id);
+      if (catState.store !== "all") ps = ps.filter(p => p.best.store === catState.store);
+      if (catState.realOnly) ps = ps.filter(p => verdictOf(p).k === "good");
+      const s = catState.sort;
+      ps.sort((a, b) => s === "price" ? a.best.now - b.best.now : s === "save" ? b.save - a.save : b.disc - a.disc);
+      $("#cat-list").innerHTML = ps.length ? ps.map(dealCard).join("") : `<p class="sub">No products match these filters. Try another store or turn off "90-day lows only".</p>`;
+    };
+    const ps = PRODUCTS.filter(p => p.cat === id);
+    const winCounts = STORES.map(st => [st, ps.filter(p => p.best.store === st.id).length]).filter(x => x[1]).sort((a, b) => b[1] - a[1]);
+    $("#view").innerHTML = `
+      <div class="crumbs"><a href="#home">All deals</a><span>/</span><span>${esc(c.name)}</span></div>
+      <section>
+        <div class="sec-head">
+          <div><span class="eyebrow">Category</span><h1 style="margin-top:8px">${esc(c.name)}</h1>
+          <p>${ps.length} tracked products · up to ${pct(Math.max(...ps.map(p => p.disc)))} off · cheapest most often at <b>${winCounts[0][0].name}</b> (${winCounts[0][1]} of ${ps.length})</p></div>
+        </div>
+        <div class="toolbar">
+          <div class="seg" role="group" aria-label="Sort">
+            <button data-s="disc">Highest % off</button><button data-s="save">Most $ saved</button><button data-s="price">Lowest price</button>
+          </div>
+          <label for="storeSel">Best store</label>
+          <select id="storeSel"><option value="all">Any store</option>${winCounts.map(([st, n]) => `<option value="${st.id}">${st.name} (${n})</option>`).join("")}</select>
+          <label style="display:flex;gap:6px;align-items:center;color:var(--fg-2)"><input type="checkbox" id="realOnly"> 90-day lows only</label>
+        </div>
+        <div class="deals" id="cat-list"></div>
+      </section>`;
+    const syncSeg = () => document.querySelectorAll("[data-s]").forEach(b => b.classList.toggle("on", b.dataset.s === catState.sort));
+    document.querySelectorAll("[data-s]").forEach(b => b.onclick = () => { catState.sort = b.dataset.s; syncSeg(); render(); });
+    if (!winCounts.some(([st]) => st.id === catState.store)) catState.store = "all";
+    $("#storeSel").value = catState.store;
+    $("#storeSel").onchange = e => { catState.store = e.target.value; render(); };
+    $("#realOnly").checked = catState.realOnly;
+    $("#realOnly").onchange = e => { catState.realOnly = e.target.checked; render(); };
+    syncSeg(); render();
+  };
+
+  const viewProduct = id => {
+    const p = byId[id]; if (!p) return viewHome();
+    const c = catById[p.cat];
+    catNav(p.cat);
+    const v = verdictOf(p);
+    const allHist = p.offers.flatMap(o => o.hist);
+    const high90 = Math.max(...allHist);
+    const avg90 = allHist.reduce((s, x) => s + x, 0) / allHist.length;
+    const lowIdx = (() => { let bi = 0, bv = Infinity; p.offers.forEach(o => o.hist.slice(0, DAYS - 1).forEach((x, i) => { if (x < bv) { bv = x; bi = i; } })); return bi; })();
+    const vText = v.k === "good"
+      ? `No store has sold it below ${money(p.best.now)} in the last 90 days. ${storeById[p.best.store].name} has held this price since ${fmtDate(dateAt(lowIdx))}.`
+      : v.k === "neutral"
+        ? `${money(p.best.now)} is within 4% of the 90-day low of ${money(p.low90)}. A fair buy; it may dip a little more on Black Friday itself.`
+        : `It sold for ${money(p.low90)} on ${fmtDate(dateAt(lowIdx))}. The discount is real against MSRP, but you could wait for a better price.`;
+    const fake = p.offers.filter(o => Math.max(...o.hist.slice(50, 80)) > p.msrp);
+    const related = PRODUCTS.filter(x => x.cat === p.cat && x.id !== p.id).sort((a, b) => b.disc - a.disc).slice(0, 4);
+
+    $("#view").innerHTML = `
+      <div class="crumbs"><a href="#home">All deals</a><span>/</span><a href="#c-${c.id}">${esc(c.name)}</a><span>/</span><span>${esc(p.name)}</span></div>
+      <div class="p-head">
+        <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+          <span class="eyebrow">${esc(p.brand)}</span>
+          <h1>${esc(p.name)}</h1>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span class="tag">-${pct(p.disc)}</span>
+            <span class="pill ${v.k}">${v.t}</span>
+            <span class="pill neutral">MSRP ${money(p.msrp)}</span>
+            <span class="pill neutral">${p.offers.length} stores tracked</span>
+          </div>
+        </div>
+        <div class="best-box">
+          <span class="lbl">Highest discount store</span>
+          <span class="store">${storeDot(p.best.store)}${storeById[p.best.store].name}</span>
+          <div class="price-row"><span class="price">${money(p.best.now)}</span><span class="was">${money(p.msrp)}</span></div>
+          <span style="font-size:13px;color:var(--fg-2)">You save <b class="num">${money(Math.round(p.save * 100) / 100)}</b> (${pct(p.disc)} off)</span>
+        </div>
+      </div>
+
+      <div class="p-grid">
+        <div class="verdict ${v.k === "warn" ? "warn" : "good"}" role="note">
+          ${v.k === "warn"
+            ? '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3 2 21h20z"/><path d="M12 10v5M12 18h.01"/></svg>'
+            : '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>'}
+          <div><strong>${v.k === "warn" ? "Good discount, not the best price" : v.t === "Lowest in 90 days" ? "Real deal: lowest price in 90 days" : "Solid deal: close to the 90-day low"}</strong><p>${vText}</p>
+          ${fake.length ? `<p>Watch out: ${fake.map(o => storeById[o.store].name).join(", ")} raised the price above MSRP in October before cutting it, which makes its "% off" look bigger than it is.</p>` : ""}</div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi"><small>Best price now</small><b>${money(p.best.now)}</b><span>${storeById[p.best.store].name}</span></div>
+          <div class="kpi"><small>90-day low</small><b>${money(p.low90)}</b><span>${fmtDate(dateAt(lowIdx))}</span></div>
+          <div class="kpi"><small>90-day average</small><b>${money(Math.round(avg90))}</b><span>all stores</span></div>
+          <div class="kpi"><small>90-day high</small><b>${money(high90)}</b><span>all stores</span></div>
+        </div>
+
+        <div class="panel">
+          <div class="chart-head">
+            <h2>Price history</h2>
+            <div class="seg" role="group" aria-label="Time range">
+              <button data-r="30">30 days</button><button data-r="60">60 days</button><button data-r="90" class="on">90 days</button>
+            </div>
+          </div>
+          <div class="legend" id="legend"></div>
+          <div class="chart" id="chart"></div>
+        </div>
+
+        <div class="panel">
+          <div class="chart-head"><h2>Compare stores</h2><span style="font-size:13px;color:var(--muted)">Sorted by highest discount</span></div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>Store</th><th class="r">Price now</th><th class="r">Off MSRP</th><th class="r">You save</th><th class="r">Store's 90-day low</th><th class="r">vs. best</th></tr></thead>
+            <tbody>${p.offers.map((o, i) => `<tr class="${i === 0 ? "best" : ""}">
+              <td><span class="store-cell">${storeDot(o.store)}${storeById[o.store].name} ${i === 0 ? '<span class="badge">Best deal</span>' : ""}</span></td>
+              <td class="r num"><b>${money(o.now)}</b></td>
+              <td class="r"><span class="disc">-${pct(o.disc)}</span></td>
+              <td class="r num">${money(Math.round((p.msrp - o.now) * 100) / 100)}</td>
+              <td class="r num">${money(o.low90)}</td>
+              <td class="r num" style="color:var(--muted)">${i === 0 ? "—" : "+" + money(Math.round((o.now - p.best.now) * 100) / 100)}</td>
+            </tr>`).join("")}</tbody>
+          </table></div>
+        </div>
+
+        ${related.length ? `<section style="margin-top:8px">
+          <div class="sec-head"><div><h2>More ${esc(c.name)} deals</h2></div><a href="#c-${c.id}" style="font-size:14px;font-weight:600;color:var(--accent);text-decoration:none">See all ${PRODUCTS.filter(x => x.cat === p.cat).length} →</a></div>
+          <div class="related deals">${related.map(dealCard).join("")}</div></section>` : ""}
+      </div>`;
+
+    const state = { range: 90, hidden: new Set() };
+    const legend = () => {
+      $("#legend").innerHTML = p.offers.map(o => `<button data-st="${o.store}" class="${state.hidden.has(o.store) ? "off" : ""}" aria-pressed="${!state.hidden.has(o.store)}">${storeDot(o.store)}${storeById[o.store].name}</button>`).join("");
+      document.querySelectorAll("[data-st]").forEach(b => b.onclick = () => {
+        const s = b.dataset.st;
+        if (state.hidden.has(s)) state.hidden.delete(s); else if (state.hidden.size < p.offers.length - 1) state.hidden.add(s);
+        legend(); drawChart(p, state);
+      });
+    };
+    document.querySelectorAll("[data-r]").forEach(b => b.onclick = () => {
+      state.range = +b.dataset.r;
+      document.querySelectorAll("[data-r]").forEach(x => x.classList.toggle("on", x === b));
+      drawChart(p, state);
+    });
+    legend(); drawChart(p, state);
+    currentChart = () => drawChart(p, state);
+  };
+
+  /* ---------- chart ---------- */
+  let currentChart = null;
+  const niceStep = span => { const raw = span / 4, mag = Math.pow(10, Math.floor(Math.log10(raw))); const n = raw / mag; return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * mag; };
+
+  function drawChart(p, state) {
+    const host = $("#chart"); if (!host) return;
+    const W = Math.max(300, host.clientWidth), H = W < 520 ? 240 : 300;
+    const m = { t: 16, r: 14, b: 28, l: W < 520 ? 48 : 58 };
+    const start = DAYS - state.range;
+    const offers = p.offers.filter(o => !state.hidden.has(o.store));
+    const vals = offers.flatMap(o => o.hist.slice(start)).concat([p.msrp]);
+    const step = niceStep(Math.max(...vals) - Math.min(...vals) || p.msrp * 0.1);
+    const lo = Math.max(0, Math.floor(Math.min(...vals) / step) * step), hi = Math.ceil(Math.max(...vals) / step) * step;
+    const x = i => m.l + ((i - start) / (DAYS - 1 - start)) * (W - m.l - m.r);
+    const y = v => m.t + (1 - (v - lo) / (hi - lo || 1)) * (H - m.t - m.b);
+    let g = "";
+    for (let v = lo; v <= hi + 1e-6; v += step) {
+      g += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">$${Math.round(v).toLocaleString()}</text>`;
+    }
+    const tickEvery = state.range === 30 ? 7 : state.range === 60 ? 14 : 21;
+    for (let i = DAYS - 1; i >= start; i -= tickEvery) g += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${fmtDate(dateAt(i))}</text>`;
+    // early Black Friday window
+    const ebf = Math.max(start, 72);
+    g += `<rect class="bf" x="${x(ebf)}" y="${m.t}" width="${x(DAYS - 1) - x(ebf)}" height="${H - m.t - m.b}"/>`;
+    g += `<text class="bf-lbl" x="${x(DAYS - 1) - 4}" y="${m.t + 12}" text-anchor="end">Early BF deals</text>`;
+    g += `<line class="msrp" x1="${m.l}" x2="${W - m.r}" y1="${y(p.msrp)}" y2="${y(p.msrp)}"/><text x="${m.l + 4}" y="${y(p.msrp) - 5}">MSRP ${money(p.msrp)}</text>`;
+    // step lines: later offers (pricier) first so the best sits on top
+    [...offers].reverse().forEach(o => {
+      let d = "";
+      for (let i = start; i < DAYS; i++) {
+        const xx = x(i), yy = y(o.hist[i]);
+        d += i === start ? `M${xx},${yy}` : `H${xx}V${yy}`;
+      }
+      const col = `var(${storeById[o.store].c})`;
+      g += `<path d="${d}" fill="none" stroke="var(--chart-surface)" stroke-width="5" stroke-linejoin="round"/>`;
+      g += `<path d="${d}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/>`;
+      g += `<circle cx="${x(DAYS - 1)}" cy="${y(o.now)}" r="4.5" fill="${col}" stroke="var(--chart-surface)" stroke-width="2"/>`;
+    });
+    g += `<g id="hover" style="display:none"><line class="cross" id="hx" y1="${m.t}" y2="${H - m.b}"/><g id="hdots"></g></g>`;
+    g += `<rect id="hit" x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}" fill="transparent"/>`;
+    host.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Price history for ${esc(p.name)} over ${state.range} days">${g}</svg><div class="tip" hidden></div>`;
+
+    const hit = host.querySelector("#hit"), hov = host.querySelector("#hover"), tip = host.querySelector(".tip");
+    const move = ev => {
+      const r = host.getBoundingClientRect();
+      const px = ev.clientX - r.left;
+      const i = Math.max(start, Math.min(DAYS - 1, Math.round(start + ((px - m.l) / (W - m.l - m.r)) * (DAYS - 1 - start))));
+      hov.style.display = "";
+      host.querySelector("#hx").setAttribute("x1", x(i)); host.querySelector("#hx").setAttribute("x2", x(i));
+      host.querySelector("#hdots").innerHTML = offers.map(o => `<circle cx="${x(i)}" cy="${y(o.hist[i])}" r="4" fill="var(${storeById[o.store].c})" stroke="var(--chart-surface)" stroke-width="2"/>`).join("");
+      const rows = [...offers].sort((a, b) => a.hist[i] - b.hist[i]);
+      tip.innerHTML = `<div class="d">${dateAt(i).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</div>` +
+        rows.map(o => `<div class="row"><span>${storeDot(o.store)}${storeById[o.store].name}</span><b>${money(o.hist[i])}</b></div>`).join("");
+      tip.hidden = false;
+      const tw = tip.offsetWidth;
+      let left = x(i) + 14; if (left + tw > W) left = x(i) - tw - 14;
+      tip.style.left = Math.max(0, left) + "px"; tip.style.top = m.t + "px";
+    };
+    hit.addEventListener("pointermove", move);
+    hit.addEventListener("pointerdown", move);
+    hit.addEventListener("pointerleave", () => { hov.style.display = "none"; tip.hidden = true; });
+  }
+  let rT; window.addEventListener("resize", () => { clearTimeout(rT); rT = setTimeout(() => currentChart && currentChart(), 120); });
+
+  /* ---------- countdown ---------- */
+  let cdTimer;
+  function tick() {
+    clearInterval(cdTimer);
+    const run = () => {
+      const el = $("#cd"); if (!el) return clearInterval(cdTimer);
+      const ms = Math.max(0, BF - new Date());
+      const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, mi = Math.floor(ms / 6e4) % 60, s = Math.floor(ms / 1e3) % 60;
+      el.innerHTML = ms ? [[d, "days"], [h, "hrs"], [mi, "min"], [s, "sec"]].map(([n, l]) => `<div><b>${String(n).padStart(2, "0")}</b><span>${l}</span></div>`).join("")
+        : `<div style="grid-column:1/-1"><b>LIVE</b><span>Black Friday deals are on</span></div>`;
+    };
+    run(); cdTimer = setInterval(run, 1000);
+  }
+
+  /* ---------- search ---------- */
+  const q = $("#q"), res = $("#results");
+  let sel = -1;
+  const doSearch = () => {
+    const t = q.value.trim().toLowerCase();
+    if (!t) { res.hidden = true; return; }
+    const cats = CATS.filter(c => c.name.toLowerCase().includes(t)).map(c => ({ href: "#c-" + c.id, a: c.name, b: "Category", r: "" }));
+    const ps = PRODUCTS.filter(p => (p.brand + " " + p.name + " " + catById[p.cat].name).toLowerCase().includes(t))
+      .sort((a, b) => b.disc - a.disc).slice(0, 8)
+      .map(p => ({ href: "#p-" + p.id, a: p.brand + " " + p.name, b: catById[p.cat].name + " · best at " + storeById[p.best.store].name, r: "-" + pct(p.disc) }));
+    const all = [...cats, ...ps]; sel = -1;
+    res.innerHTML = all.length ? all.map(r => `<a href="${r.href}"><span>${esc(r.a)}<small>${esc(r.b)}</small></span><span class="disc">${r.r}</span></a>`).join("")
+      : `<div class="empty">No matches for "${esc(q.value)}". Try a brand or a category like "laptop".</div>`;
+    res.hidden = false;
+  };
+  q.addEventListener("input", doSearch);
+  q.addEventListener("focus", doSearch);
+  q.addEventListener("keydown", e => {
+    const links = [...res.querySelectorAll("a")];
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault(); if (!links.length) return;
+      sel = (sel + (e.key === "ArrowDown" ? 1 : -1) + links.length) % links.length;
+      links.forEach((l, i) => l.classList.toggle("on", i === sel));
+    } else if (e.key === "Enter") {
+      const l = links[sel >= 0 ? sel : 0]; if (l) { location.hash = l.getAttribute("href"); q.blur(); res.hidden = true; }
+    } else if (e.key === "Escape") { res.hidden = true; q.blur(); }
+  });
+  document.addEventListener("click", e => { if (!e.target.closest(".search")) res.hidden = true; else if (e.target.closest(".search-results a")) { res.hidden = true; q.value = ""; } });
+
+  /* ---------- router ---------- */
+  const route = () => {
+    const h = location.hash.slice(1);
+    currentChart = null;
+    if (h.startsWith("c-")) viewCat(h.slice(2));
+    else if (h.startsWith("p-")) viewProduct(h.slice(2));
+    else viewHome();
+    window.scrollTo(0, 0);
+  };
+  window.addEventListener("hashchange", route);
+  route();
+})();
+</script>
