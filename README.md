@@ -8,4 +8,4 @@ A standalone, single-file site (no build step) that ranks Black Friday deals by 
 
 Open `index.html` in a browser, or deploy the folder to any static host.
 
-> Products, stores and prices are generated sample data. To use real data, replace the `CATS`/`PRODUCTS` generation in the script with a feed of `{ product, msrp, offers: [{ store, history[] }] }`.
+> Products, stores and prices are generated sample data, and product pictures are drawn as inline SVG (`DRAW` / `productArt` in the script). To use real data, replace the `CATS`/`PRODUCTS` generation with a feed of `{ product, msrp, image, offers: [{ store, history[] }] }` and swap `productArt(p)` for an `<img src>` of the product photo.
