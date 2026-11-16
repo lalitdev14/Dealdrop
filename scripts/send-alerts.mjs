@@ -4,6 +4,7 @@
  *
  *   node scripts/send-alerts.mjs                      confirmations + price alerts
  *   node scripts/send-alerts.mjs --confirmations-only confirmations only (runs every 15 minutes)
+ *   node scripts/send-alerts.mjs --price-alerts-only  price alerts only (runs after the daily price update)
  *
  * Environment:
  *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY   the dealdrop Supabase project (service role key, never the anon key)
@@ -21,6 +22,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const env = process.env;
 const CONFIRM_ONLY = process.argv.includes("--confirmations-only");
+const ALERTS_ONLY = process.argv.includes("--price-alerts-only");
 const SITE = (env.SITE_URL || "").replace(/#.*$/, "").replace(/\/?$/, "/");
 const log = (...a) => console.log("[alerts]", ...a);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -95,7 +97,7 @@ async function main() {
   let failures = 0;
 
   // 1) confirmation emails for new alerts
-  const pending = await store.list(r => !r.confirm_sent_at && !r.confirmed_at && !r.unsubscribed_at,
+  const pending = ALERTS_ONLY ? [] : await store.list(r => !r.confirm_sent_at && !r.confirmed_at && !r.unsubscribed_at,
     "confirm_sent_at=is.null&confirmed_at=is.null&unsubscribed_at=is.null&select=id,email,product_id,product_name,target_price,confirm_token,unsub_token");
   for (const a of pending) {
     const confirmUrl = `${SITE}#confirm-${a.confirm_token}`, unsubUrl = `${SITE}#unsub-${a.unsub_token}`;
@@ -112,7 +114,7 @@ async function main() {
       await store.update(a.id, { confirm_sent_at: new Date().toISOString() });
     } catch (e) { failures++; log(`confirmation to alert ${a.id} failed: ${e.message}`); }
   }
-  log(`confirmations sent: ${pending.length - failures}`);
+  if (!ALERTS_ONLY) log(`confirmations sent: ${pending.length - failures}`);
   if (CONFIRM_ONLY) return;
 
   // 2) price alerts: confirmed, still active, best price now at or below the target
