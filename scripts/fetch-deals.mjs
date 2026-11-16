@@ -28,7 +28,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_FILE = join(ROOT, "data", "deals.json");
 const SOURCES_FILE = join(ROOT, "data", "deal-sources.json");
 const KEEP_HOURS = 72;
-const MAX_DEALS = 300;
+const MAX_DEALS = 800;
 const env = process.env;
 const MOCK = env.DEALS_MOCK_DIR;
 const NOW = env.DEALS_NOW ? new Date(env.DEALS_NOW) : new Date();
@@ -51,9 +51,13 @@ const round2 = v => Math.round(v * 100) / 100;
 const hash = s => createHash("sha1").update(s).digest("hex").slice(0, 12);
 
 async function getText(url, label) {
-  const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml, */*" } });
-  if (!res.ok) throw new Error(`${label}: HTTP ${res.status}`);
-  return res.text();
+  for (let attempt = 1; ; attempt++) {
+    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml, */*" }, signal: AbortSignal.timeout(20000) });
+    if (res.ok) return res.text();
+    // rate limited: wait as long as the site asks (Retry-After, else 15s), then try once more
+    if (res.status === 429 && attempt === 1 && !MOCK) { await new Promise(r => setTimeout(r, Math.min(60, +res.headers.get("retry-after") || 15) * 1000)); continue; }
+    throw new Error(`${label}: HTTP ${res.status}`);
+  }
 }
 async function getJson(url, label, headers = {}) {
   const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json", ...headers } });
@@ -95,6 +99,7 @@ const STORE_NAMES = {
   "bhphotovideo": "B&H Photo", "adorama": "Adorama", "microcenter": "Micro Center", "dell": "Dell", "lenovo": "Lenovo", "hp": "HP",
   "apple": "Apple", "samsung": "Samsung", "kohls": "Kohl's", "macys": "Macy's", "nike": "Nike", "adidas": "adidas", "woot": "Woot",
   "wayfair": "Wayfair", "officedepot": "Office Depot", "gamestop": "GameStop", "sams-club": "Sam's Club", "samsclub": "Sam's Club",
+  "steampowered": "Steam", "gog": "GOG", "playstation": "PlayStation", "walmar": "Walmart", "humblebundle": "Humble Bundle", "fanatical": "Fanatical",
   "the-home-depot": "Home Depot", "costco-wholesale": "Costco", "target-com": "Target", "lowes-com": "Lowe's", "bose": "Bose", "aliexpress": "AliExpress", "gymshark": "Gymshark", "lululemon": "lululemon",
 };
 export function storeFromUrl(u) {
@@ -179,14 +184,54 @@ async function reddit(cfg) {
     const title = stripTags(tag(e, "title"));
     const content = decode(tag(e, "content"));
     const link = (content.match(/<a href="([^"]+)">\[link\]<\/a>/) || [])[1] || "";
-    const direct = link && !/reddit\.com|redd\.it/.test(link) ? decode(link) : null;
+    let direct = link && !/reddit\.com|redd\.it/.test(link) ? decode(link) : null;
+    let host = ""; try { host = new URL(direct).hostname; } catch {}
+    const amazonShort = /(^|\.)(amzn\.to|a\.co|amzn\.com)$/.test(host);
+    // someone else's affiliate short-link: don't use it (we never route through other people's codes)
+    if (amazonShort || /(^|\.)(7tiv\.net|vzew\.net|sjv\.io|pxf\.io|skimresources\.com|linksynergy\.com|anrdoezrs\.net|dpbolvw\.net|jdoqocy\.com|kqzyfj\.com|tkqlhce\.com|bit\.ly|tinyurl\.com|howl\.link|shop-links\.co|prf\.hn|awin1\.com|ojrq\.net|ebay\.us|go\.magik\.ly|geni\.us|joinhoney\.com)$/.test(host)) direct = null;
     const price = priceFromText(title);
     return {
       source: "reddit", sourceName: "r/buildapcsales", sourceUrl: attr(e, "link", "href"),
       title: title.replace(/^\[[^\]]+\]\s*/, ""), rawTitle: title, price, was: wasFromText(title, price), pct: pctFromText(title), code: codeFromText(title),
-      store: direct ? storeFromUrl(direct) : "", asin: null, url: direct, image: attr(e, "media:thumbnail", "url") || null,
+      store: direct ? storeFromUrl(direct) : amazonShort ? "Amazon" : detectStore(title), asin: direct ? ((direct.match(/amazon\.com\/(?:[^?#]*\/)?(?:dp|gp\/product)\/([A-Z0-9]{10})/) || [])[1] || null) : null,
+      url: direct && !/amazon\./.test(host) ? direct : null, image: attr(e, "media:thumbnail", "url") || null,
       posted: new Date(stripTags(tag(e, "published")) || NOW).toISOString(), expires: null,
       signals: { rank: i / Math.max(1, entries.length) },
+    };
+  });
+}
+
+/* Any deal blog / deal site RSS feed. Store comes from the text ("$5 at Amazon", "Amazon - …", "Walmart has …"). */
+const KNOWN_STORES = [...new Set([...Object.values(STORE_NAMES), "CVS", "Walgreens", "Ulta", "Sephora", "Old Navy", "Gap", "JCPenney", "Dick's Sporting Goods",
+  "REI", "Nordstrom", "Nordstrom Rack", "Zappos", "Chewy", "Etsy", "Steam", "Epic Games", "GOG", "Fanatical", "Humble Bundle", "Nintendo", "PlayStation", "Xbox",
+  "Kroger", "Sam's Club", "BJ's", "QVC", "HSN", "Vitacost", "iHerb", "Bath & Body Works", "Under Armour", "Reebok", "Puma", "New Balance", "Levi's", "J.Crew",
+  "Banana Republic", "Ashley", "IKEA", "Overstock", "Best Buy", "Verizon", "AT&T", "T-Mobile", "Mint Mobile", "Visible", "Google Store", "Meta", "Anker"])]
+  .sort((a, b) => b.length - a.length);
+const storeRe = KNOWN_STORES.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/'/g, "['’]?")).join("|");
+export function detectStore(text) {
+  const t = String(text);
+  const m = t.match(new RegExp(`\\b(?:at|from|via|@)\\s+(${storeRe})\\b`, "i")) || t.match(new RegExp(`^\\s*(${storeRe})\\s*[-–:|]`, "i"))
+    || t.match(new RegExp(`\\b(${storeRe})\\s+(?:with [^.]{1,40}\\s+)?(?:has|offers|is offering|now offers|discounts|knocks)\\b`, "i"));
+  if (!m) return "";
+  const hit = m[1].toLowerCase().replace(/['’]/g, "");
+  return KNOWN_STORES.find(s => s.toLowerCase().replace(/['’]/g, "") === hit) || m[1];
+}
+async function rss(cfg) {
+  const xml = MOCK ? await mock(cfg.mockName || `${cfg.id}.xml`) : await getText(cfg.url, cfg.id);
+  const items = blocks(xml, "item");
+  return items.filter(it => !cfg.match || new RegExp(cfg.match, "i").test(it)).map((it, i) => {
+    const title = stripTags(tag(it, "title"));
+    const html = decode(tag(it, "content:encoded") || tag(it, "description"));
+    const text = stripTags(html);
+    const price = priceFromText(title) ?? (cfg.priceInBody ? priceFromText(text) : null);
+    const amazon = html.match(/https?:\/\/(?:www\.)?amazon\.com\/(?:[^"'\s]*\/)?(?:dp|gp\/product)\/([A-Z0-9]{10})/);
+    const img = attr(it, "media:content", "url") || attr(it, "enclosure", "url") || stripTags(tag(it, "thumbnail-image")) || (html.match(/<img[^>]+src="([^"]+)"/) || [])[1] || null;
+    return {
+      source: cfg.id, title, price, was: wasFromText(title + " " + text, price), pct: pctFromText(title), code: codeFromText(title + " " + text),
+      store: cfg.store || detectStore(title) || detectStore(text.slice(0, 300)), asin: amazon ? amazon[1] : null, url: null,
+      image: img && img.startsWith("//") ? "https:" + img : img,
+      posted: new Date(stripTags(tag(it, "pubDate")) || NOW).toISOString(), expires: null,
+      signals: { rank: cfg.ranked ? i / Math.max(1, items.length) : 0.5 },
     };
   });
 }
@@ -253,6 +298,17 @@ const STORE_SEARCH = {
   "Woot": "https://www.woot.com/search?q=", "Wayfair": "https://www.wayfair.com/keyword.php?keyword=", "AliExpress": "https://www.aliexpress.us/w/wholesale-",
   "adidas": "https://www.adidas.com/us/search?q=", "Nike": "https://www.nike.com/w?q=", "lululemon": "https://shop.lululemon.com/search?Ntt=",
   "Apple": "https://www.apple.com/us/search/", "GameStop": "https://www.gamestop.com/search/?q=", "Office Depot": "https://www.officedepot.com/catalog/search.do?Ntt=",
+  "CVS": "https://www.cvs.com/search?searchTerm=", "Walgreens": "https://www.walgreens.com/search/results.jsp?Ntt=", "Ulta": "https://www.ulta.com/search?search=",
+  "Sephora": "https://www.sephora.com/search?keyword=", "Old Navy": "https://oldnavy.gap.com/browse/search.do?searchText=", "Gap": "https://www.gap.com/browse/search.do?searchText=",
+  "Nordstrom": "https://www.nordstrom.com/sr?keyword=", "Nordstrom Rack": "https://www.nordstromrack.com/sr?keyword=", "Zappos": "https://www.zappos.com/search?term=",
+  "Chewy": "https://www.chewy.com/s?query=", "Etsy": "https://www.etsy.com/search?q=", "Steam": "https://store.steampowered.com/search/?term=",
+  "Sam's Club": "https://www.samsclub.com/s/", "JCPenney": "https://www.jcpenney.com/s?searchTerm=", "REI": "https://www.rei.com/search?q=",
+  "Dick's Sporting Goods": "https://www.dickssportinggoods.com/search/SearchDisplay?searchTerm=", "Wayfair": "https://www.wayfair.com/keyword.php?keyword=",
+  "Ashley": "https://www.ashleyfurniture.com/search/?q=", "IKEA": "https://www.ikea.com/us/en/search/?q=", "QVC": "https://www.qvc.com/catalog/search.html?keyword=",
+  "Under Armour": "https://www.underarmour.com/en-us/search/?q=", "New Balance": "https://www.newbalance.com/search?q=", "Puma": "https://us.puma.com/us/en/search?q=",
+  "GOG": "https://www.gog.com/en/games?query=", "PlayStation": "https://store.playstation.com/en-us/search/", "Humble Bundle": "https://www.humblebundle.com/store/search?search=",
+  "Fanatical": "https://www.fanatical.com/en/search?search=", "Woot": "https://www.woot.com/search?q=",
+  "Bath & Body Works": "https://www.bathandbodyworks.com/search?q=", "Kroger": "https://www.kroger.com/search?query=", "Anker": "https://www.anker.com/search?q=",
 };
 /** Clean deal title → product name, e.g. "Select Accts: 12-Pk Coke 3 for $12 + Free S&H" → "12-Pk Coke". */
 export function productName(title) {
@@ -342,7 +398,7 @@ async function main() {
   let previous = [];
   try { previous = JSON.parse(await readFile(OUT_FILE, "utf8")).deals || []; } catch {}
 
-  const runners = { slickdeals, dealnews, reddit };
+  const runners = { slickdeals, dealnews, reddit, rss };
   const lists = [], used = [];
   const feeds = Array.isArray(cfg.feeds) ? cfg.feeds : Object.entries(cfg.feeds || {}).map(([id, sc]) => ({ id, type: id, ranked: true, ...sc }));
   for (const sc of feeds) {
@@ -356,7 +412,7 @@ async function main() {
       const type = sc.type; if (!used.includes(type)) used.push(type);
       log(`${sc.id}: ${r.length} deals`);
     } catch (e) { log(`${sc.id}: skipped (${e.message})`); }
-    if (!MOCK) await new Promise(res => setTimeout(res, 800));                // be polite to the feeds
+    if (!MOCK) await new Promise(res => setTimeout(res, sc.type === "reddit" ? 6000 : 800));   // be polite; Reddit allows few requests
   }
   for (const [id, fn] of Object.entries({ fmtc, impact })) {
     try { const r = await fn(); if (r == null) { log(`${id}: skipped (no keys)`); continue; } lists.push(r); used.push(id); log(`${id}: ${r.length} deals`); }
