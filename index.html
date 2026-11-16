@@ -496,7 +496,7 @@ footer .wrap { padding-block: 20px; }
     const off = d.pct ? `<span class="tag">${d.upTo ? "up to " : ""}-${pct(d.pct)}</span>` : rank != null && rank < 3 ? `<span class="tag soft">#${rank + 1} hot</span>` : "";
     const a = (inner, cls = "") => l ? `<a class="${cls}" href="${esc(l.href)}" target="_blank" rel="${l.rel}">${inner}</a>` : inner;
     const img = d.image ? `<img class="pic" src="${esc(d.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : icon("tv", 40);
-    return `<article class="deal hot">
+    return `<article class="deal hot" data-cat="${esc(d.cat || "")}" data-store="${esc(d.store || "")}">
       ${a(`${img}${off}`, "art-box" + (d.image ? " has-pic" : ""))}
       <div><div class="brandline">${esc(d.store || "Online")} · ${ago(d.posted)}</div><h3>${a(esc(d.name || d.title))}</h3></div>
       <div class="price-row">${d.price != null ? `<span class="price">${d.upTo ? "from " : ""}${money(d.price)}</span>` : ""}${d.was ? `<span class="was">${money(d.was)}</span>` : ""}${d.freeShip ? '<span class="pill good">Free shipping</span>' : ""}</div>
@@ -513,7 +513,30 @@ footer .wrap { padding-block: 20px; }
   });
   const discloseNote = () => `<p class="disclose">${affiliateOn() ? "DealDrop may earn a commission when you buy through links on this page, at no extra cost to you. " : ""}Deals change fast; check the price on the store's site.</p>`;
 
-  const hotState = { cat: "all", store: "all", codes: false, sort: "hot" };
+  /* ---------- "for you": learn each visitor's taste from what they click (kept in their own browser) ---------- */
+  const TASTE_KEY = "dealdrop-taste";
+  const taste = () => { try { return JSON.parse(localStorage.getItem(TASTE_KEY)) || { cat: {}, store: {}, n: 0 }; } catch (e) { return { cat: {}, store: {}, n: 0 }; } };
+  const bumpTaste = (cat, store, w = 1) => {
+    const t = taste();
+    if (cat) t.cat[cat] = (t.cat[cat] || 0) + w;
+    if (store) t.store[store] = (t.store[store] || 0) + w;
+    t.n = (t.n || 0) + w;
+    try { localStorage.setItem(TASTE_KEY, JSON.stringify(t)); } catch (e) {}
+  };
+  const hasTaste = () => taste().n >= 3;
+  // score boosted by the share of this visitor's clicks in the deal's category and store
+  const forYou = list => {
+    const t = taste(); if (!(t.n >= 3)) return [...list].sort((a, b) => b.score - a.score);
+    const share = (m, k) => (m[k] || 0) / t.n;
+    return [...list].map(d => ({ d, s: d.score * (1 + 1.2 * share(t.cat, d.cat) + 0.6 * share(t.store, d.store)) })).sort((a, b) => b.s - a.s).map(x => x.d);
+  };
+  document.addEventListener("click", e => {
+    const a = e.target.closest(".hot a[rel~='sponsored']"); if (!a) return;
+    const card = a.closest(".hot"); bumpTaste(card.dataset.cat, card.dataset.store);
+  });
+
+  const PAGE = 60;
+  const hotState = { cat: "all", store: "all", codes: false, sort: "hot", shown: PAGE };
   const viewHot = () => {
     catNav("hot");
     if (!HOT.length) { $("#view").innerHTML = `<section><h1>Hot deals</h1><p class="sub">No deals loaded yet. They refresh every few hours.</p></section>`; return; }
@@ -526,7 +549,7 @@ footer .wrap { padding-block: 20px; }
           <p>${HOT.length} deals from ${stores.length} stores, ranked by popularity, discount depth and freshness. Last update ${new Date(HOT_META.updatedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}.</p></div></div>
         <div class="toolbar">
           <div class="seg" role="group" aria-label="Sort">
-            <button data-hsort="hot">Hottest</button><button data-hsort="pct">Highest % off</button><button data-hsort="price">Lowest price</button><button data-hsort="new">Newest</button>
+            ${hasTaste() ? '<button data-hsort="you">For you</button>' : ""}<button data-hsort="hot">Hottest</button><button data-hsort="pct">Highest % off</button><button data-hsort="price">Lowest price</button><button data-hsort="new">Newest</button>
           </div>
           <label for="hotStore">Store</label>
           <select id="hotStore"><option value="all">Any store</option>${stores.map(([s, n]) => `<option value="${esc(s)}">${esc(s)} (${n})</option>`).join("")}</select>
@@ -534,24 +557,35 @@ footer .wrap { padding-block: 20px; }
         </div>
         <div class="chips" style="margin-bottom:14px"><button data-hcat="all">All</button>${cats.map(c => `<button data-hcat="${c.id}">${esc(c.name)}</button>`).join("")}</div>
         <div class="deals" id="hot-list"></div>
+        <div style="text-align:center;margin-top:20px"><button class="btn secondary" id="hotMore" hidden></button></div>
         ${discloseNote()}
       </section>`;
     const render = () => {
       let ds = HOT.filter(d => (hotState.cat === "all" || d.cat === hotState.cat) && (hotState.store === "all" || d.store === hotState.store) && (!hotState.codes || d.code));
       const s = hotState.sort;
-      ds = [...ds].sort((a, b) => s === "pct" ? (b.pct || 0) - (a.pct || 0) : s === "price" ? (a.price ?? 1e9) - (b.price ?? 1e9) : s === "new" ? new Date(b.posted) - new Date(a.posted) : b.score - a.score);
-      $("#hot-list").innerHTML = ds.length ? ds.map((d, i) => hotCard(d, s === "hot" && hotState.cat === "all" ? i : null)).join("") : `<p class="sub">No deals match these filters.</p>`;
+      ds = s === "you" ? forYou(ds) : [...ds].sort((a, b) => s === "pct" ? (b.pct || 0) - (a.pct || 0) : s === "price" ? (a.price ?? 1e9) - (b.price ?? 1e9) : s === "new" ? new Date(b.posted) - new Date(a.posted) : b.score - a.score);
+      $("#hot-list").innerHTML = ds.length ? ds.slice(0, hotState.shown).map((d, i) => hotCard(d, s === "hot" && hotState.cat === "all" ? i : null)).join("") : `<p class="sub">No deals match these filters.</p>`;
+      const more = $("#hotMore"), left = ds.length - hotState.shown;
+      more.hidden = left <= 0; more.textContent = `Show ${Math.min(PAGE, left)} more (${left} left)`;
+      more.onclick = () => { hotState.shown += PAGE; render(); };
       document.querySelectorAll("[data-hsort]").forEach(b => b.classList.toggle("on", b.dataset.hsort === s));
       document.querySelectorAll("[data-hcat]").forEach(b => b.classList.toggle("on", b.dataset.hcat === hotState.cat));
       wireCodes();
     };
-    document.querySelectorAll("[data-hsort]").forEach(b => b.onclick = () => { hotState.sort = b.dataset.hsort; render(); });
-    document.querySelectorAll("[data-hcat]").forEach(b => b.onclick = () => { hotState.cat = b.dataset.hcat; render(); });
+    if (hotState.sort === "hot" && hasTaste()) hotState.sort = "you";
+    if (hotState.sort === "you" && !hasTaste()) hotState.sort = "hot";
+    hotState.shown = PAGE;
+    document.querySelectorAll("[data-hsort]").forEach(b => b.onclick = () => { hotState.sort = b.dataset.hsort; hotState.shown = PAGE; render(); });
+    document.querySelectorAll("[data-hcat]").forEach(b => b.onclick = () => {
+      hotState.cat = b.dataset.hcat; hotState.shown = PAGE;
+      if (hotState.cat !== "all") bumpTaste(hotState.cat, null, 0.5);       // picking a category is a weaker signal than a click-through
+      render();
+    });
     if (hotState.store !== "all" && !stores.some(([s]) => s === hotState.store)) hotState.store = "all";
     $("#hotStore").value = hotState.store;
-    $("#hotStore").onchange = e => { hotState.store = e.target.value; render(); };
+    $("#hotStore").onchange = e => { hotState.store = e.target.value; hotState.shown = PAGE; render(); };
     $("#hotCodes").checked = hotState.codes;
-    $("#hotCodes").onchange = e => { hotState.codes = e.target.checked; render(); };
+    $("#hotCodes").onchange = e => { hotState.codes = e.target.checked; hotState.shown = PAGE; render(); };
     render();
   };
 
@@ -740,7 +774,7 @@ footer .wrap { padding-block: 20px; }
     : `<div class="art-box ${cls}">${productArt(p)}${extra}</div>`;
   document.addEventListener("error", e => {
     const t = e.target;
-    if (t && t.matches && t.matches("img.pic")) { t.hidden = true; t.parentNode.classList.remove("has-pic"); t.nextElementSibling.hidden = false; }
+    if (t && t.matches && t.matches("img.pic")) { t.hidden = true; t.parentNode.classList.remove("has-pic"); if (t.nextElementSibling) t.nextElementSibling.hidden = false; }
   }, true);
 
 
@@ -791,7 +825,7 @@ footer .wrap { padding-block: 20px; }
           <div><h2>Hottest right now</h2><p>Updated ${updatedAgo()}</p></div>
           <a href="#hot" style="font-size:14px;font-weight:600;color:var(--accent);text-decoration:none">See all ${HOT.length} →</a>
         </div>
-        <div class="deals">${HOT.slice(0, n).map((d, i) => hotCard(d, i)).join("")}</div>
+        <div class="deals">${forYou(HOT).slice(0, n).map((d, i) => hotCard(d, hasTaste() ? null : i)).join("")}</div>
         ${discloseNote()}
       </section>` : "";
   const viewHome = () => {
