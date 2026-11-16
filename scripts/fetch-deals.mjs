@@ -28,7 +28,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_FILE = join(ROOT, "data", "deals.json");
 const SOURCES_FILE = join(ROOT, "data", "deal-sources.json");
 const KEEP_HOURS = 72;
-const MAX_DEALS = 150;
+const MAX_DEALS = 300;
 const env = process.env;
 const MOCK = env.DEALS_MOCK_DIR;
 const NOW = env.DEALS_NOW ? new Date(env.DEALS_NOW) : new Date();
@@ -95,7 +95,7 @@ const STORE_NAMES = {
   "bhphotovideo": "B&H Photo", "adorama": "Adorama", "microcenter": "Micro Center", "dell": "Dell", "lenovo": "Lenovo", "hp": "HP",
   "apple": "Apple", "samsung": "Samsung", "kohls": "Kohl's", "macys": "Macy's", "nike": "Nike", "adidas": "adidas", "woot": "Woot",
   "wayfair": "Wayfair", "officedepot": "Office Depot", "gamestop": "GameStop", "sams-club": "Sam's Club", "samsclub": "Sam's Club",
-  "the-home-depot": "Home Depot", "bose": "Bose", "aliexpress": "AliExpress", "gymshark": "Gymshark", "lululemon": "lululemon",
+  "the-home-depot": "Home Depot", "costco-wholesale": "Costco", "target-com": "Target", "lowes-com": "Lowe's", "bose": "Bose", "aliexpress": "AliExpress", "gymshark": "Gymshark", "lululemon": "lululemon",
 };
 export function storeFromUrl(u) {
   try {
@@ -131,7 +131,7 @@ export function categorize(text) {
 
 /* ---------------- sources ---------------- */
 async function slickdeals(cfg) {
-  const xml = MOCK ? await mock("slickdeals.xml") : await getText(cfg.url, "Slickdeals");
+  const xml = MOCK ? await mock(cfg.mockName || "slickdeals.xml") : await getText(cfg.url, "Slickdeals");
   const items = blocks(xml, "item");
   return items.map((it, i) => {
     const title = stripTags(tag(it, "title"));
@@ -142,10 +142,11 @@ async function slickdeals(cfg) {
     const slug = (html.match(/data-store-slug="([^"]+)"/) || [])[1] || "";
     const trd = decode((html.match(/[?&](?:amp;)?trd=([^&"]+)/) || [])[1] || "").replace(/\+/g, " ");
     const asin = (html.match(/data-aps-asin="([A-Z0-9]{10})"/) || [])[1] || null;
+    const exitSite = (html.match(/data-product-exitWebsite="([a-z0-9.-]+\.[a-z]{2,})"/i) || [])[1];
     return {
       source: "slickdeals", sourceName: "Slickdeals", sourceUrl: decode(tag(it, "link")).replace(/\?utm_[^#]*$/, ""),
       title, price, was: wasFromText(title + " " + text, price), pct: pctFromText(title), code: codeFromText(title + " " + text),
-      store: storeName(slug || trd), asin, url: null, image: (html.match(/<img[^>]+src="([^"]+)"/) || [])[1] || null,
+      store: storeName(slug || trd), asin, url: null, storeHome: exitSite ? `https://www.${exitSite.replace(/^www\./, "")}/` : null, image: (html.match(/<img[^>]+src="([^"]+)"/) || [])[1] || null,
       posted: new Date(stripTags(tag(it, "pubDate"))).toISOString(), expires: null,
       signals: { rank: i / Math.max(1, items.length), thumbs },
     };
@@ -153,7 +154,7 @@ async function slickdeals(cfg) {
 }
 
 async function dealnews(cfg) {
-  const xml = MOCK ? await mock("dealnews.xml") : await getText(cfg.url, "DealNews");
+  const xml = MOCK ? await mock(cfg.mockName || "dealnews.xml") : await getText(cfg.url, "DealNews");
   const items = blocks(xml, "item");
   return items.map((it, i) => {
     const title = stripTags(tag(it, "title"));
@@ -172,7 +173,7 @@ async function dealnews(cfg) {
 }
 
 async function reddit(cfg) {
-  const xml = MOCK ? await mock("reddit.xml") : await getText(cfg.url, "Reddit");
+  const xml = MOCK ? await mock(cfg.mockName || "reddit.xml") : await getText(cfg.url, "Reddit");
   const entries = blocks(xml, "entry");
   return entries.map((e, i) => {
     const title = stripTags(tag(e, "title"));
@@ -241,6 +242,38 @@ async function impact() {
   return out;
 }
 
+/* ---------------- direct store links (never via the deal site) ---------------- */
+const STORE_SEARCH = {
+  "Amazon": "https://www.amazon.com/s?k=", "Walmart": "https://www.walmart.com/search?q=", "Best Buy": "https://www.bestbuy.com/site/searchpage.jsp?st=",
+  "Home Depot": "https://www.homedepot.com/s/", "Lowe's": "https://www.lowes.com/search?searchTerm=", "Target": "https://www.target.com/s?searchTerm=",
+  "Costco": "https://www.costco.com/CatalogSearch?keyword=", "eBay": "https://www.ebay.com/sch/i.html?_nkw=", "Newegg": "https://www.newegg.com/p/pl?d=",
+  "Staples": "https://www.staples.com/", "Kohl's": "https://www.kohls.com/search.jsp?search=", "Macy's": "https://www.macys.com/shop/featured/",
+  "Dell": "https://www.dell.com/en-us/search/", "Lenovo": "https://www.lenovo.com/us/en/search?text=", "Samsung": "https://www.samsung.com/us/search/searchMain/?searchTerm=",
+  "Micro Center": "https://www.microcenter.com/search/search_results.aspx?Ntt=", "B&H Photo": "https://www.bhphotovideo.com/c/search?q=",
+  "Woot": "https://www.woot.com/search?q=", "Wayfair": "https://www.wayfair.com/keyword.php?keyword=", "AliExpress": "https://www.aliexpress.us/w/wholesale-",
+  "adidas": "https://www.adidas.com/us/search?q=", "Nike": "https://www.nike.com/w?q=", "lululemon": "https://shop.lululemon.com/search?Ntt=",
+  "Apple": "https://www.apple.com/us/search/", "GameStop": "https://www.gamestop.com/search/?q=", "Office Depot": "https://www.officedepot.com/catalog/search.do?Ntt=",
+};
+/** Clean deal title → product name, e.g. "Select Accts: 12-Pk Coke 3 for $12 + Free S&H" → "12-Pk Coke". */
+export function productName(title) {
+  return String(title)
+    .replace(/^\s*(?:\[[^\]]*\]\s*|(?:select accts?|prime members?|ymmv|today only|lightning deal|in[- ]store|members?|new users?)\s*:\s*)+/gi, "")
+    .replace(/\s+(?:for|at|from|only|now|just)?\s*\$\s?[\d,]+(?:\.\d{2})?.*$/i, "")
+    .replace(/\s+(?:\+|w\/|with)\s+(?:free|f\/?s|fs).*$/i, "")
+    .replace(/\s+-\s*$/, "").replace(/\s{2,}/g, " ").trim();
+}
+export function storeLink(d) {
+  if (d.url) return d.url;                                                   // direct link from the feed (Reddit, FMTC, Impact)
+  if (d.asin && d.store === "Amazon") return `https://www.amazon.com/dp/${d.asin}`;
+  const base = STORE_SEARCH[d.store];
+  if (base) {
+    const q = productName(d.title).split(/\s+/).slice(0, 9).join(" ");
+    return base.endsWith("=") || base.endsWith("-") ? base + encodeURIComponent(q) + (base.endsWith("-") ? ".html" : "")
+      : /\/s\/$|\/search\/$|featured\/$/.test(base) ? base + encodeURIComponent(q) : base;
+  }
+  return d.storeHome || null;                                                // store homepage when that's all we know
+}
+
 /* ---------------- ranking and merging ---------------- */
 export function score(d) {
   const s = d.signals || {};
@@ -278,7 +311,8 @@ export function mergeDeals(lists, previous = []) {
       price: keep.price ?? cur.price ?? d.price, was: keep.was ?? cur.was ?? d.was, pct: keep.pct ?? cur.pct ?? d.pct,
       code: keep.code || cur.code || d.code, image: keep.image || cur.image || d.image, url: keep.url || cur.url || d.url,
       affiliate: !!(keep.affiliate || cur.affiliate || d.affiliate), asin: keep.asin || cur.asin || d.asin,
-      store: keep.store || cur.store || d.store, signals: { ...(cur.signals || {}), ...(keep.signals || {}) },
+      linkType: keep.linkType || cur.linkType || d.linkType, store: keep.store || cur.store || d.store, storeHome: keep.storeHome || cur.storeHome || d.storeHome,
+      signals: { ...(cur.signals || {}), ...(keep.signals || {}) },
       posted: [cur.posted, d.posted].sort()[0], fresh: cur.fresh || fresh,
     });
   };
@@ -286,15 +320,20 @@ export function mergeDeals(lists, previous = []) {
   previous.forEach(d => add({ ...d, fresh: false, signals: { ...(d.signals || {}), rank: Math.min(1, (d.signals?.rank ?? 0.5) + 0.1) } }, false));
   return [...byKey.values()].map(d => {
     const pct = d.pct ?? (d.was && d.price ? round2(1 - d.price / d.was) : null);
+    const url = storeLink(d);
+    if (!url) return null;                                                   // only deals we can send straight to the store
     const out = {
-      id: d.id || hash(keyOf(d)), title: d.title, store: d.store || "", price: d.price ?? null, was: d.was ?? null,
+      id: d.id || hash(keyOf(d)), title: d.title, name: d.name || productName(d.title) || d.title, store: d.store || "",
+      price: d.price ?? null, was: d.was ?? null,
       pct: pct && pct > 0 && pct < 0.99 ? pct : null, upTo: d.pct != null && isUpTo(d.title), code: d.code || null, image: d.image || null,
-      url: d.url || null, affiliate: !!d.affiliate, asin: d.asin || null, cat: d.cat || categorize(`${d.rawTitle || d.title} ${d.category || ""}`),
-      sources: d.sources, posted: d.posted, expires: d.expires || null, signals: d.signals,
+      freeShip: /free (?:s&h|shipping|ship)|\bfs\b/i.test(d.title),
+      url, linkType: d.linkType || (d.url ? "product" : d.asin && d.store === "Amazon" ? "product" : STORE_SEARCH[d.store] ? "search" : "store"),
+      affiliate: !!d.affiliate, asin: d.asin || null, cat: d.cat || categorize(`${d.rawTitle || d.title} ${d.category || ""}`),
+      sources: (d.sources || []).map(s => ({ id: s.id })), posted: d.posted, expires: d.expires || null, signals: d.signals,
     };
     out.score = score(out);
     return out;
-  }).sort((a, b) => b.score - a.score).slice(0, MAX_DEALS);
+  }).filter(Boolean).sort((a, b) => b.score - a.score).slice(0, MAX_DEALS);
 }
 
 /* ---------------- main ---------------- */
@@ -305,10 +344,19 @@ async function main() {
 
   const runners = { slickdeals, dealnews, reddit };
   const lists = [], used = [];
-  for (const [id, sc] of Object.entries(cfg.feeds || {})) {
-    if (!sc.enabled) { log(`${id}: off in data/deal-sources.json`); continue; }
-    try { const r = await runners[id](sc); lists.push(r); used.push(id); log(`${id}: ${r.length} deals`); }
-    catch (e) { log(`${id}: skipped (${e.message})`); }
+  const feeds = Array.isArray(cfg.feeds) ? cfg.feeds : Object.entries(cfg.feeds || {}).map(([id, sc]) => ({ id, type: id, ranked: true, ...sc }));
+  for (const sc of feeds) {
+    if (!sc.enabled) { log(`${sc.id}: off in data/deal-sources.json`); continue; }
+    if (!runners[sc.type]) { log(`${sc.id}: unknown type "${sc.type}"`); continue; }
+    try {
+      let r = await runners[sc.type]({ ...sc, mockName: MOCK ? `${sc.id}.xml` : null });
+      if (sc.store) r = r.filter(d => d.store === sc.store);                    // store searches also match other stores
+      if (!sc.ranked) r = r.map(d => ({ ...d, signals: { ...d.signals, rank: 0.5 } }));   // date-ordered feed: position means nothing
+      lists.push(r);
+      const type = sc.type; if (!used.includes(type)) used.push(type);
+      log(`${sc.id}: ${r.length} deals`);
+    } catch (e) { log(`${sc.id}: skipped (${e.message})`); }
+    if (!MOCK) await new Promise(res => setTimeout(res, 800));                // be polite to the feeds
   }
   for (const [id, fn] of Object.entries({ fmtc, impact })) {
     try { const r = await fn(); if (r == null) { log(`${id}: skipped (no keys)`); continue; } lists.push(r); used.push(id); log(`${id}: ${r.length} deals`); }
