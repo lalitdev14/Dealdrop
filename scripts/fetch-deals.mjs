@@ -28,7 +28,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_FILE = join(ROOT, "data", "deals.json");
 const SOURCES_FILE = join(ROOT, "data", "deal-sources.json");
 const KEEP_HOURS = 72;
-const MAX_DEALS = 800;
+const MAX_DEALS = 1500;
 const env = process.env;
 const MOCK = env.DEALS_MOCK_DIR;
 const NOW = env.DEALS_NOW ? new Date(env.DEALS_NOW) : new Date();
@@ -99,6 +99,8 @@ const STORE_NAMES = {
   "bhphotovideo": "B&H Photo", "adorama": "Adorama", "microcenter": "Micro Center", "dell": "Dell", "lenovo": "Lenovo", "hp": "HP",
   "apple": "Apple", "samsung": "Samsung", "kohls": "Kohl's", "macys": "Macy's", "nike": "Nike", "adidas": "adidas", "woot": "Woot",
   "wayfair": "Wayfair", "officedepot": "Office Depot", "gamestop": "GameStop", "sams-club": "Sam's Club", "samsclub": "Sam's Club",
+  "cvs": "CVS", "dicks-sporting-goods": "Dick's Sporting Goods", "dickssportinggoods": "Dick's Sporting Goods", "dicks sporting goods": "Dick's Sporting Goods",
+  "jomashop": "Jomashop", "jenson-usa": "Jenson USA", "dollar-general": "Dollar General", "philips-hue": "Philips Hue", "harman-kardon": "Harman Kardon",
   "steampowered": "Steam", "gog": "GOG", "playstation": "PlayStation", "walmar": "Walmart", "humblebundle": "Humble Bundle", "fanatical": "Fanatical",
   "the-home-depot": "Home Depot", "costco-wholesale": "Costco", "target-com": "Target", "lowes-com": "Lowe's", "bose": "Bose", "aliexpress": "AliExpress", "gymshark": "Gymshark", "lululemon": "lululemon",
 };
@@ -112,6 +114,11 @@ export function storeFromUrl(u) {
 export const storeName = s => {
   let n = String(s || "").trim();
   try { n = decodeURIComponent(n); } catch {}
+  if (/^https?\s/i.test(n)) {                                                  // "https shop simon com products" → "Simon"
+    const w = n.split(/\s+/), i = w.findIndex(x => /^(com|net|org|co)$/i.test(x));
+    return i > 1 ? storeName(w[i - 1]) : "";
+  }
+  if (/^https?:|\//i.test(n)) return storeFromUrl(/^https?:/.test(n) ? n : "https://" + n) || "";
   n = n.replace(/\+/g, " ").replace(/^.*\bvia\s+/i, "").replace(/\s*(\.|\s)com$/i, "").trim();
   const known = STORE_NAMES[n.toLowerCase().replace(/[^a-z-]/g, "")] || STORE_NAMES[n.toLowerCase().replace(/\s+/g, "-")];
   if (known) return known;
@@ -367,7 +374,7 @@ export function mergeDeals(lists, previous = []) {
       price: keep.price ?? cur.price ?? d.price, was: keep.was ?? cur.was ?? d.was, pct: keep.pct ?? cur.pct ?? d.pct,
       code: keep.code || cur.code || d.code, image: keep.image || cur.image || d.image, url: keep.url || cur.url || d.url,
       affiliate: !!(keep.affiliate || cur.affiliate || d.affiliate), asin: keep.asin || cur.asin || d.asin,
-      linkType: keep.linkType || cur.linkType || d.linkType, store: keep.store || cur.store || d.store, storeHome: keep.storeHome || cur.storeHome || d.storeHome,
+      feeds: [...new Set([...(cur.feeds || []), ...(d.feeds || [])])], linkType: keep.linkType || cur.linkType || d.linkType, store: keep.store || cur.store || d.store, storeHome: keep.storeHome || cur.storeHome || d.storeHome,
       signals: { ...(cur.signals || {}), ...(keep.signals || {}) },
       posted: [cur.posted, d.posted].sort()[0], fresh: cur.fresh || fresh,
     });
@@ -385,7 +392,7 @@ export function mergeDeals(lists, previous = []) {
       freeShip: /free (?:s&h|shipping|ship)|\bfs\b/i.test(d.title),
       url, linkType: d.linkType || (d.url ? "product" : d.asin && d.store === "Amazon" ? "product" : STORE_SEARCH[d.store] ? "search" : "store"),
       affiliate: !!d.affiliate, asin: d.asin || null, cat: d.cat || categorize(`${d.rawTitle || d.title} ${d.category || ""}`),
-      sources: (d.sources || []).map(s => ({ id: s.id })), posted: d.posted, expires: d.expires || null, signals: d.signals,
+      sources: (d.sources || []).map(s => ({ id: s.id })), feeds: (d.feeds || []).slice(0, 6), posted: d.posted, expires: d.expires || null, signals: d.signals,
     };
     out.score = score(out);
     return out;
@@ -393,43 +400,83 @@ export function mergeDeals(lists, previous = []) {
 }
 
 /* ---------------- main ---------------- */
+// Rotation: each run fetches only the feeds that are due, most overdue first, within a time budget.
+// A feed's interval adapts to how many of its deals reach the top of the list ("yield"):
+//   3+ top deals → every 15 min, 1–2 → hourly, none → every 3 hours (never faster than its own "every").
+const STATE_FILE = join(ROOT, "data", "feed-state.json");
+const RUN_BUDGET_MS = +(env.DEALS_RUN_BUDGET_MS || 5 * 60 * 1000);
+const TOP_N = 200;
+const intervalFor = (sc, st) => {
+  const hits = st?.hits ?? 3;                                               // new feeds start "hot" so they get tried quickly
+  const adaptive = hits >= 3 ? 15 : hits >= 1 ? 60 : 180;
+  return Math.max(sc.every || 15, adaptive);
+};
+
 async function main() {
   const cfg = JSON.parse(await readFile(SOURCES_FILE, "utf8"));
   let previous = [];
   try { previous = JSON.parse(await readFile(OUT_FILE, "utf8")).deals || []; } catch {}
+  let state = {};
+  try { state = JSON.parse(await readFile(STATE_FILE, "utf8")); } catch {}
 
   const runners = { slickdeals, dealnews, reddit, rss };
-  const lists = [], used = [];
-  const feeds = Array.isArray(cfg.feeds) ? cfg.feeds : Object.entries(cfg.feeds || {}).map(([id, sc]) => ({ id, type: id, ranked: true, ...sc }));
-  for (const sc of feeds) {
-    if (!sc.enabled) { log(`${sc.id}: off in data/deal-sources.json`); continue; }
-    if (!runners[sc.type]) { log(`${sc.id}: unknown type "${sc.type}"`); continue; }
+  const lists = [], used = [], fetched = [];
+  const all = (Array.isArray(cfg.feeds) ? cfg.feeds : Object.entries(cfg.feeds || {}).map(([id, sc]) => ({ id, type: id, ranked: true, ...sc })))
+    .filter(sc => sc.enabled !== false && runners[sc.type]);
+  const due = all.map(sc => {
+    const st = state[sc.id];
+    const overdue = st?.last ? (NOW - new Date(st.last)) / 6e4 - intervalFor(sc, st) : 1e9;
+    return { sc, overdue };
+  }).filter(x => x.overdue >= 0 || env.DEALS_ALL === "1").sort((a, b) => b.overdue - a.overdue);
+  log(`${due.length} of ${all.length} feeds due this run`);
+
+  const t0 = Date.now(), lastHit = {};
+  for (const { sc } of due) {
+    if (Date.now() - t0 > RUN_BUDGET_MS && !MOCK) { log(`time budget reached; ${due.length - fetched.length} feeds wait for the next run`); break; }
+    const host = (() => { try { return new URL(sc.url).hostname; } catch { return sc.type; } })();
+    const gap = sc.type === "reddit" ? 6000 : 900;                          // per-site politeness gap
+    if (!MOCK && lastHit[host]) { const w = gap - (Date.now() - lastHit[host]); if (w > 0) await new Promise(r => setTimeout(r, w)); }
     try {
       let r = await runners[sc.type]({ ...sc, mockName: MOCK ? `${sc.id}.xml` : null });
       if (sc.store) r = r.filter(d => d.store === sc.store);                    // store searches also match other stores
+      if (sc.titleMatch) r = r.filter(d => new RegExp(sc.titleMatch, "i").test(d.title));
       if (!sc.ranked) r = r.map(d => ({ ...d, signals: { ...d.signals, rank: 0.5 } }));   // date-ordered feed: position means nothing
-      lists.push(r);
-      const type = sc.type; if (!used.includes(type)) used.push(type);
+      lists.push(r.map(d => ({ ...d, feeds: [sc.id] })));
+      if (!used.includes(sc.type)) used.push(sc.type);
+      state[sc.id] = { ...(state[sc.id] || {}), last: NOW.toISOString(), items: r.length, error: null };
       log(`${sc.id}: ${r.length} deals`);
-    } catch (e) { log(`${sc.id}: skipped (${e.message})`); }
-    if (!MOCK) await new Promise(res => setTimeout(res, sc.type === "reddit" ? 6000 : 800));   // be polite; Reddit allows few requests
+    } catch (e) {
+      state[sc.id] = { ...(state[sc.id] || {}), last: NOW.toISOString(), error: e.message.slice(0, 120) };
+      log(`${sc.id}: skipped (${e.message})`);
+    }
+    fetched.push(sc.id);
+    lastHit[host] = Date.now();
   }
   for (const [id, fn] of Object.entries({ fmtc, impact })) {
-    try { const r = await fn(); if (r == null) { log(`${id}: skipped (no keys)`); continue; } lists.push(r); used.push(id); log(`${id}: ${r.length} deals`); }
+    try { const r = await fn(); if (r == null) { log(`${id}: skipped (no keys)`); continue; } lists.push(r.map(d => ({ ...d, feeds: [id] }))); used.push(id); log(`${id}: ${r.length} deals`); }
     catch (e) { log(`${id}: skipped (${e.message})`); }
   }
   if (!lists.flat().length && !previous.length) throw new Error("No deals from any source; leaving data unchanged.");
 
   const deals = mergeDeals(lists, previous);
+  // yield: how many of each fetched feed's deals made the top of the list
+  const hits = {};
+  deals.slice(0, TOP_N).forEach(d => (d.feeds || []).forEach(f => { hits[f] = (hits[f] || 0) + 1; }));
+  for (const id of fetched) state[id] = { ...state[id], hits: hits[id] || 0 };
+  const known = new Set(all.map(sc => sc.id));
+  for (const id of Object.keys(state)) if (!known.has(id)) delete state[id];
+
   const out = {
     updatedAt: NOW.toISOString(),
     sources: used,
+    feedCount: all.length,
     categories: CATEGORIES.map(([id, name]) => ({ id, name })).concat([{ id: "other", name: "Everything else" }]),
     deals,
   };
   await mkdir(dirname(OUT_FILE), { recursive: true });
   await writeFile(OUT_FILE, JSON.stringify(out));
-  log(`saved ${deals.length} deals from ${used.join(", ") || "previous run"} → data/deals.json`);
+  await writeFile(STATE_FILE, JSON.stringify(state, null, 0).replace(/\},"/g, '},\n"'));
+  log(`fetched ${fetched.length} feeds; saved ${deals.length} deals → data/deals.json`);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) main().catch(e => { console.error(e.message); process.exit(1); });
