@@ -13,15 +13,25 @@ A static site that ranks Black Friday deals by discount, with categories, per-st
 
 `scripts/fetch-deals.mjs` runs every 15 minutes (`.github/workflows/update-deals.yml`) and writes `data/deals.json`:
 
-1. **Collects** deals from public deal feeds (Slickdeals frontpage, popular and per-store searches; DealNews main and
-   per-store feeds for Amazon, Walmart, Lowe's, Best Buy, eBay and Newegg; r/buildapcsales) and, when keys are set,
+1. **Collects** deals from ~295 public deal feeds (Slickdeals frontpage, popular, ~40 store and ~100 product searches;
+   every DealNews category and ~30 store feeds; 20 deal subreddits in one request; 15 deal blogs such as 9to5Toys,
+   Ben's Bargains, DealCatcher, Hip2Save, Android Authority and CNET deals) and, when keys are set,
    from affiliate networks (FMTC covers deals from every major network; Impact covers brands you have joined).
    Each feed can be switched off in `data/deal-sources.json`.
 2. **Merges** the same deal posted on several sites (by Amazon ASIN or title) and keeps every source credited.
 3. **Ranks** by community votes, editor picks, "best-ever price" notes, discount depth, agreement between sites and freshness.
    Deals older than 72 hours or past their end date drop off.
 
-The page shows them on the home page and under **Hot deals · every store** (sort, filter by store or category, "with promo code"
+**Rotation.** Feeds live in `scripts/build-sources.mjs` (run it to regenerate `data/deal-sources.json`). Each run
+fetches only the feeds that are due, most overdue first, within a 5-minute budget, with a pause between requests to the
+same site. A feed's interval adapts to its yield, stored in `data/feed-state.json`: 3+ deals in the top 200 → every 15
+minutes, 1–2 → hourly, none → every 3 hours. Up to 1,500 deals are kept.
+
+**For you.** The page remembers which categories and stores each visitor clicks (in their own browser only) and, after
+three clicks, adds a "For you" sort that boosts those categories and stores. Ranking by what all visitors click would
+need a shared click counter, for example the Supabase project described under Price alerts.
+
+The page shows them on the home page and under **Hot deals** (sort, filter by store or category, "with promo code"
 only, one-click code copy). Every deal links straight to the store, never to the deal site: the product page when known
 (Amazon ASIN, direct links), otherwise a search for that product on the store's own site. Deals with no store link are dropped.
 The deal sites' own click links are never followed, so no fake clicks are sent to their affiliate accounts.
