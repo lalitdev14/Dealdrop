@@ -2,7 +2,7 @@ name: Update hot deals
 
 on:
   schedule:
-    - cron: "23 */3 * * *"   # every 3 hours
+    - cron: "*/15 * * * *"   # every 15 minutes (GitHub may start scheduled runs a few minutes late)
   workflow_dispatch: {}      # "Run workflow" button for a manual update
 
 permissions:
