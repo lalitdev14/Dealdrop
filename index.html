@@ -506,15 +506,13 @@ footer .wrap { padding-block: 20px; }
 
   /* ---------- hot deals from every store (data/deals.json) ---------- */
   let HOT = [], HOT_META = null, hotCatById = {};
-  const hotStoreUrl = d => d.url ? (d.affiliate ? d.url : monetize(d.url))
-    : d.asin && CFG.amazonTag ? monetize(`https://www.amazon.com/dp/${d.asin}`) : null;
-  const hotLink = d => {
-    const store = hotStoreUrl(d);
-    const src = (d.sources || []).find(s => s.url);
-    return store ? { href: store, label: `Get deal${d.store ? " at " + d.store : ""}`, rel: "sponsored noopener" }
-      : src ? { href: src.url, label: `See deal on ${src.name}`, rel: "noopener" } : null;
-  };
-  const ago = iso => { const h = Math.max(0, (Date.now() - new Date(iso)) / 36e5); return h < 1 ? "just now" : h < 24 ? Math.round(h) + "h ago" : Math.round(h / 24) + "d ago"; };
+  const hotLink = d => d.url ? {                    // always straight to the store, with our affiliate code when configured
+    href: d.affiliate ? d.url : monetize(d.url),
+    label: `${d.linkType === "search" ? "Find it" : "Get deal"}${d.store ? " at " + d.store : ""}`,
+    rel: "sponsored noopener",
+  } : null;
+  const updatedAgo = () => HOT_META ? ago(HOT_META.updatedAt) : "recently";
+  const ago = iso => { const m = Math.max(0, (Date.now() - new Date(iso)) / 6e4); return m < 2 ? "just now" : m < 60 ? Math.round(m) + " min ago" : m < 1440 ? Math.round(m / 60) + "h ago" : Math.round(m / 1440) + "d ago"; };
   const hotCard = (d, rank) => {
     const l = hotLink(d);
     const off = d.pct ? `<span class="tag">${d.upTo ? "up to " : ""}-${pct(d.pct)}</span>` : rank != null && rank < 3 ? `<span class="tag soft">#${rank + 1} hot</span>` : "";
@@ -522,13 +520,12 @@ footer .wrap { padding-block: 20px; }
     const img = d.image ? `<img class="pic" src="${esc(d.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : icon("tv", 40);
     return `<article class="deal hot">
       ${a(`${img}${off}`, "art-box" + (d.image ? " has-pic" : ""))}
-      <div><div class="brandline">${esc(d.store || "Online")} · ${esc((hotCatById[d.cat] || {}).name || "Deal")} · ${ago(d.posted)}</div><h3>${a(esc(d.title))}</h3></div>
-      <div class="price-row">${d.price != null ? `<span class="price">${d.upTo ? "from " : ""}${money(d.price)}</span>` : ""}${d.was ? `<span class="was">${money(d.was)}</span>` : ""}</div>
+      <div><div class="brandline">${esc(d.store || "Online")} · ${esc((hotCatById[d.cat] || {}).name || "Deal")} · ${ago(d.posted)}</div><h3>${a(esc(d.name || d.title))}</h3></div>
+      <div class="price-row">${d.price != null ? `<span class="price">${d.upTo ? "from " : ""}${money(d.price)}</span>` : ""}${d.was ? `<span class="was">${money(d.was)}</span>` : ""}${d.freeShip ? '<span class="pill good">Free shipping</span>' : ""}</div>
       <div class="hot-actions">
         ${d.code ? `<button class="code-btn" data-code="${esc(d.code)}" title="Copy promo code">${esc(d.code)} <small>copy</small></button>` : ""}
         ${l ? `<a class="btn" href="${esc(l.href)}" target="_blank" rel="${l.rel}">${esc(l.label)} ↗</a>` : ""}
       </div>
-      <div class="src">Found on ${(d.sources || []).map(s => s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.name)}</a>` : esc(s.name)).join(" + ")}</div>
     </article>`;
   };
   const wireCodes = () => document.querySelectorAll("[data-code]").forEach(b => b.onclick = async () => {
@@ -536,7 +533,7 @@ footer .wrap { padding-block: 20px; }
     b.querySelector("small").textContent = "copied";
     setTimeout(() => { const s = b.querySelector("small"); if (s) s.textContent = "copy"; }, 1600);
   });
-  const discloseNote = () => `<p class="disclose">${affiliateOn() ? "DealDrop may earn a commission when you buy through links on this page, at no extra cost to you. " : ""}Deals are found by deal communities and editors and change fast; check the price on the store's site.</p>`;
+  const discloseNote = () => `<p class="disclose">${affiliateOn() ? "DealDrop may earn a commission when you buy through links on this page, at no extra cost to you. " : ""}Deals change fast; check the price on the store's site.</p>`;
 
   const hotState = { cat: "all", store: "all", codes: false, sort: "hot" };
   const viewHot = () => {
@@ -547,8 +544,8 @@ footer .wrap { padding-block: 20px; }
     $("#view").innerHTML = `
       <div class="crumbs"><a href="#home">All deals</a><span>/</span><span>Hot deals</span></div>
       <section>
-        <div class="sec-head"><div><span class="eyebrow">Every store · refreshed every 3 hours</span><h1 style="margin-top:8px">Hot deals right now</h1>
-          <p>${HOT.length} deals from ${stores.length} stores, ranked by community votes, editor picks, discount depth and freshness. Last update ${new Date(HOT_META.updatedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}.</p></div></div>
+        <div class="sec-head"><div><span class="eyebrow">Every store · updated ${updatedAgo()}</span><h1 style="margin-top:8px">Hot deals right now</h1>
+          <p>${HOT.length} deals from ${stores.length} stores, ranked by popularity, discount depth and freshness. Last update ${new Date(HOT_META.updatedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}.</p></div></div>
         <div class="toolbar">
           <div class="seg" role="group" aria-label="Sort">
             <button data-hsort="hot">Hottest</button><button data-hsort="pct">Highest % off</button><button data-hsort="price">Lowest price</button><button data-hsort="new">Newest</button>
@@ -813,7 +810,7 @@ footer .wrap { padding-block: 20px; }
   const hotSection = (n = 12) => HOT.length ? `
       <section>
         <div class="sec-head">
-          <div><h2>Hottest deals across the web</h2><p>${HOT.length} live deals from ${new Set(HOT.map(d => d.store).filter(Boolean)).size} stores, refreshed every 3 hours.</p></div>
+          <div><h2>Hottest deals across the web</h2><p>${HOT.length} live deals from ${new Set(HOT.map(d => d.store).filter(Boolean)).size} stores, updated ${updatedAgo()}.</p></div>
           <a href="#hot" style="font-size:14px;font-weight:600;color:var(--accent);text-decoration:none">See all ${HOT.length} →</a>
         </div>
         <div class="deals">${HOT.slice(0, n).map((d, i) => hotCard(d, i)).join("")}</div>
@@ -829,7 +826,7 @@ footer .wrap { padding-block: 20px; }
           <div class="hero-copy">
             <span class="eyebrow">Black Friday 2026 · live deals</span>
             <h1>The best deals on the internet, in one place.</h1>
-            <p class="sub">We pull the hottest deals from deal communities and editors every 3 hours, merge duplicates, and rank them by votes, discount and freshness, so the best ones are on top.</p>
+            <p class="sub">The hottest deals at Amazon, Walmart, Lowe's, Best Buy, Home Depot, Target, Costco and more, updated around the clock and ranked by popularity, discount and freshness. Every link goes straight to the store.</p>
             <div class="stats">
               <div><b class="num">${HOT.length}</b>live deals</div>
               <div><b class="num">${stores}</b>stores</div>
@@ -1138,7 +1135,7 @@ footer .wrap { padding-block: 20px; }
       .map(p => ({ img: artBox(p, "s-thumb"), href: "#p-" + p.id, a: p.brand + " " + p.name, b: catById[p.cat].name + " · best at " + storeById[p.best.store].name, r: "-" + pct(p.disc) }));
     const hot = HOT.filter(d => (d.title + " " + d.store).toLowerCase().includes(t)).slice(0, 6).map(d => {
       const l = hotLink(d);
-      return l && { href: l.href, ext: true, a: d.title, b: `Hot deal · ${d.store || "online"}${d.price != null ? " · " + money(d.price) : ""}`, r: d.pct ? "-" + pct(d.pct) : "" };
+      return l && { href: l.href, ext: true, a: d.name || d.title, b: `Hot deal · ${d.store || "online"}${d.price != null ? " · " + money(d.price) : ""}`, r: d.pct ? "-" + pct(d.pct) : "" };
     }).filter(Boolean);
     const all = [...cats, ...ps, ...hot]; sel = -1;
     res.innerHTML = all.length ? all.map(r => `<a href="${esc(r.href)}"${r.ext ? ' target="_blank" rel="sponsored noopener"' : ""}><span style="display:flex;gap:10px;align-items:center;min-width:0">${r.img || ""}<span>${esc(r.a)}<small>${esc(r.b)}</small></span></span><span class="disc">${r.r}</span></a>`).join("")
@@ -1327,7 +1324,7 @@ footer .wrap { padding-block: 20px; }
     } catch (e) {}
     if (MODE === "sample" && HOT.length) {          // real deals beat demo data: hide the sample catalog
       PRODUCTS = []; byId = {}; CATS = [];
-      $("#foot").textContent = `Deals are collected every 3 hours from ${(HOT_META.sources || []).map(s => ({ slickdeals: "Slickdeals", dealnews: "DealNews", reddit: "r/buildapcsales", fmtc: "FMTC", impact: "Impact" }[s] || s)).join(", ")} and link to the original post or the store. ${affiliateOn() ? "DealDrop may earn a commission from purchases made through these links. " : ""}Prices and availability change fast; confirm on the store's site before buying.`;
+      $("#foot").textContent = `Deals update around the clock and link straight to the store. ${affiliateOn() ? "DealDrop may earn a commission from purchases made through these links. " : ""}Prices and availability change fast; confirm on the store's site before buying.`;
     }
     updateAlertCount();
     if (MODE === "live") {
