@@ -7,15 +7,14 @@ A static site that ranks Black Friday deals by discount, with categories, per-st
 - **Product**: highest-discount store with a Buy link, price-history chart, store comparison table, a verdict on whether the price is really the lowest seen, and a **price alert** form.
 - **My alerts**: every target set on this device, with the current best price and "Target reached" status.
 
-- **Hot deals**: the best current deals from every store on the internet, refreshed every 3 hours, with promo codes and store links that carry DealDrop's affiliate code.
-
-**Live site:** https://raw.githack.com/lalitdev14/Dealdrop/main/index.html (served straight from this repository; see [Hosting](#hosting) for GitHub Pages).
+- **Hot deals**: the best current deals from every store on the internet, refreshed every 15 minutes, with promo codes and direct store links that carry DealDrop's affiliate code.
 
 ## Hot deals from every store (no keys needed)
 
-`scripts/fetch-deals.mjs` runs every 3 hours (`.github/workflows/update-deals.yml`) and writes `data/deals.json`:
+`scripts/fetch-deals.mjs` runs every 15 minutes (`.github/workflows/update-deals.yml`) and writes `data/deals.json`:
 
-1. **Collects** deals from public deal feeds (Slickdeals frontpage, DealNews, r/buildapcsales) and, when keys are set,
+1. **Collects** deals from public deal feeds (Slickdeals frontpage, popular and per-store searches; DealNews main and
+   per-store feeds for Amazon, Walmart, Lowe's, Best Buy, eBay and Newegg; r/buildapcsales) and, when keys are set,
    from affiliate networks (FMTC covers deals from every major network; Impact covers brands you have joined).
    Each feed can be switched off in `data/deal-sources.json`.
 2. **Merges** the same deal posted on several sites (by Amazon ASIN or title) and keeps every source credited.
@@ -23,7 +22,9 @@ A static site that ranks Black Friday deals by discount, with categories, per-st
    Deals older than 72 hours or past their end date drop off.
 
 The page shows them on the home page and under **Hot deals · every store** (sort, filter by store or category, "with promo code"
-only, one-click code copy). Each deal links to the store when the feed gives a direct store link, otherwise to the original post.
+only, one-click code copy). Every deal links straight to the store, never to the deal site: the product page when known
+(Amazon ASIN, direct links), otherwise a search for that product on the store's own site. Deals with no store link are dropped.
+The deal sites' own click links are never followed, so no fake clicks are sent to their affiliate accounts.
 While there is no Best Buy key, the home page shows only these real deals instead of the demo catalog.
 
 Run it locally: `node scripts/fetch-deals.mjs`
@@ -143,9 +144,6 @@ ALERTS_MOCK_FILE=alerts.json EMAIL_DRY_RUN=1 SITE_URL=https://example.com/ node 
 ```
 
 ### Hosting
-
-Without any setup the site runs at https://raw.githack.com/lalitdev14/Dealdrop/main/index.html, which serves the files
-of the `main` branch directly (including the deals the workflow commits every 3 hours).
 
 Serve this repository from any static host (GitHub Pages, Netlify, Vercel) so
 that `data/prices.json` sits next to `index.html`. Opening `index.html` straight from disk can't
