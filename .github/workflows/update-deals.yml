@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pages: write
 
 concurrency:
   group: update-data
@@ -32,7 +33,14 @@ jobs:
           git config user.name "dealdrop-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/deals.json data/feed-state.json
-          git diff --cached --quiet && echo "No deal changes" && exit 0
+          git diff --cached --quiet && echo "No deal changes" && echo "changed=false" >> "$GITHUB_OUTPUT" && exit 0
           git commit -m "Update hot deals ($(date -u +'%F %H:%M') UTC)"
-          for i in 1 2 3; do git pull --rebase -X theirs origin "${GITHUB_REF_NAME}" && git push && exit 0; sleep 5; done
+          for i in 1 2 3; do git pull --rebase -X theirs origin "${GITHUB_REF_NAME}" && git push && echo "changed=true" >> "$GITHUB_OUTPUT" && exit 0; sleep 5; done
           exit 1
+        id: commit
+      # Pushes made with GITHUB_TOKEN don't always start a GitHub Pages build, so ask for one.
+      - name: Rebuild GitHub Pages
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${GITHUB_REPOSITORY}/pages/builds" || echo "Pages build request failed (Pages may be off)"
