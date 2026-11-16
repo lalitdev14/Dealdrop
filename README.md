@@ -33,7 +33,7 @@ Add these as GitHub repository secrets (**Settings → Secrets and variables →
 | Walmart | `WALMART_CONSUMER_ID`, `WALMART_PRIVATE_KEY` (the PEM private key you generated), `WALMART_KEY_VERSION` (usually `1`), optional `WALMART_PUBLISHER_ID` (Impact affiliate id for commission links) | Register an app at https://walmart.io and upload your public key |
 | Amazon | `AMAZON_ACCESS_KEY`, `AMAZON_SECRET_KEY`, `AMAZON_PARTNER_TAG` (e.g. `yourtag-20`) | Amazon Associates account → Tools → Product Advertising API. Amazon only grants API access after the Associates account has made qualifying sales. |
 
-Then merge this branch into the default branch (GitHub only runs scheduled workflows from there) and
+Then make sure this code is on the default branch (GitHub only runs scheduled workflows from there) and
 open **Actions → Update Black Friday prices → Run workflow** for the first update. After that it runs
 daily at 11:17 UTC and commits the new `data/prices.json`.
 
@@ -105,7 +105,7 @@ ALERTS_MOCK_FILE=alerts.json EMAIL_DRY_RUN=1 SITE_URL=https://example.com/ node 
 
 ### Hosting
 
-Serve the `black-friday-tracker/` folder from any static host (GitHub Pages, Netlify, Vercel) so
+Serve this repository from any static host (GitHub Pages, Netlify, Vercel) so
 that `data/prices.json` sits next to `index.html`. Opening `index.html` straight from disk can't
 load the JSON (browsers block `fetch` on `file://`), so it falls back to sample data.
 
@@ -115,3 +115,9 @@ load the JSON (browsers block `fetch` on `file://`), so it falls back to sample 
 - History starts the day the job first runs; the "real deal" verdict appears after about a week of data.
 - More stores (for example Target) can be added the same way: another lookup by UPC that adds an
   entry to each product's `offers`.
+
+### GitHub Pages (simplest hosting)
+
+In the repository: **Settings → Pages → Build and deployment → Deploy from a branch**, pick `main`
+and `/ (root)`. The site appears at `https://<your-username>.github.io/<repo-name>/` and picks up
+each day's `data/prices.json` automatically. Use that address as the `SITE_URL` variable.
