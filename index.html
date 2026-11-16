@@ -166,6 +166,36 @@ img.pic { width: 80%; height: 86%; object-fit: contain; display: block; }
 .p-art img.pic { width: 88%; }
 .s-thumb img.pic { width: 92%; }
 .chart-note { padding: 28px 16px; text-align: center; color: var(--fg-2); }
+.my-alerts { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-size: 14px; font-weight: 600; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); white-space: nowrap; }
+.my-alerts:hover { border-color: var(--fg-2); }
+.my-alerts .count { background: var(--accent); color: var(--accent-ink); font: 700 11px/1 var(--f-mono); padding: 3px 6px; border-radius: 999px; }
+.alert-panel form { display: flex; flex-direction: column; gap: 12px; }
+.af-row { display: grid; grid-template-columns: minmax(0, 180px) minmax(0, 1fr) auto; gap: 12px; align-items: end; }
+.af-row label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--fg-2); min-width: 0; }
+.af-row input { font: inherit; font-size: 15px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); width: 100%; min-width: 0; }
+.af-row input:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
+.money-input { position: relative; }
+.money-input span { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-family: var(--f-mono); }
+.money-input input { padding-left: 26px; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.af-quick { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--muted); }
+.af-quick button { border: 1px solid var(--line); background: var(--surface-2); border-radius: 999px; padding: 4px 10px; font-size: 12.5px; cursor: pointer; color: var(--fg); font-family: var(--f-mono); }
+.af-quick button:hover { border-color: var(--fg-2); }
+.af-msg { margin: 0; font-size: 14px; min-height: 1.5em; }
+.af-msg.err { color: var(--accent); }
+.af-msg.ok { color: var(--good); }
+.af-status { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 12px; border-radius: 8px; background: var(--surface-2); font-size: 14px; }
+.linkish { border: 0; background: none; padding: 0; color: var(--fg-2); text-decoration: underline; cursor: pointer; font-size: 13px; }
+.alert-list { display: flex; flex-direction: column; gap: 10px; }
+.alert-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 14px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; text-decoration: none; }
+.alert-row:hover { border-color: var(--fg-2); }
+.alert-row .art-box { width: 64px; height: 64px; }
+.alert-row h3 { font: 600 15px/1.3 var(--f-body); margin: 0 0 4px; }
+.alert-row .meta { font-size: 13px; color: var(--fg-2); display: flex; gap: 10px; flex-wrap: wrap; }
+.alert-row .right { text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: end; }
+.notice { max-width: 560px; margin: 40px auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 28px; display: flex; flex-direction: column; gap: 14px; }
+.notice h1 { font-size: 30px; }
+.notice p { margin: 0; color: var(--fg-2); }
+.btn.secondary { background: var(--surface-2); color: var(--fg); }
 .deal h3 { font: 600 15px/1.3 var(--f-body); }
 .deal .brandline { font-size: 12px; color: var(--muted); }
 .price-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-top: auto; }
@@ -253,6 +283,10 @@ footer .wrap { padding-block: 20px; }
   .p-art svg.art { width: auto; height: 86%; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .best-box { min-width: 0; }
+  .af-row { grid-template-columns: minmax(0, 1fr); }
+  .alert-row { grid-template-columns: 52px minmax(0, 1fr); }
+  .alert-row .art-box { width: 52px; height: 52px; }
+  .alert-row .right { grid-column: 2; align-items: start; text-align: left; flex-direction: row; flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -268,6 +302,7 @@ footer .wrap { padding-block: 20px; }
       <input id="q" type="search" placeholder="Search products, brands, categories" autocomplete="off" aria-label="Search deals">
       <div class="search-results" id="results" hidden></div>
     </div>
+    <a class="my-alerts" href="#alerts"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>My alerts<span class="count" id="alertCount" hidden></span></a>
   </div>
   <nav class="cats" aria-label="Categories"><div class="wrap" id="catnav"></div></nav>
 </header>
@@ -651,7 +686,7 @@ footer .wrap { padding-block: 20px; }
       <div><div class="brandline">${esc(p.brand)} · ${esc(catById[p.cat].name)}</div><h3>${esc(p.name)}</h3></div>
       ${sparkline(p)}
       <div class="price-row"><span class="price">${money(p.best.now)}</span><span class="was">${money(p.msrp)}</span></div>
-      <div class="deal-top" style="align-items:center;flex-wrap:wrap"><span class="at">${storeDot(p.best.store)}Best at ${storeById[p.best.store].name}</span><span class="pill ${v.k}">${v.t}</span></div>
+      <div class="deal-top" style="align-items:center;flex-wrap:wrap"><span class="at">${storeDot(p.best.store)}Best at ${storeById[p.best.store].name}</span>${(() => { const a = myAlerts()[p.id]; return a && p.best.now <= a.target ? '<span class="pill good">Your target hit</span>' : `<span class="pill ${v.k}">${v.t}</span>`; })()}</div>
     </a>`;
   };
 
@@ -811,6 +846,8 @@ footer .wrap { padding-block: 20px; }
           <div class="kpi"><small>90-day high</small><b>${money(high90)}</b><span>all stores</span></div>
         </div>
 
+        ${alertPanel(p)}
+
         <div class="panel">
           <div class="chart-head">
             <h2>Price history</h2>
@@ -858,6 +895,7 @@ footer .wrap { padding-block: 20px; }
     });
     legend(); drawChart(p, state);
     currentChart = () => drawChart(p, state);
+    wireAlertPanel(p);
   };
 
   /* ---------- chart ---------- */
@@ -969,11 +1007,155 @@ footer .wrap { padding-block: 20px; }
   });
   document.addEventListener("click", e => { if (!e.target.closest(".search")) res.hidden = true; else if (e.target.closest(".search-results a")) { res.hidden = true; q.value = ""; } });
 
+  /* ---------- price alerts ---------- */
+  let CFG = {};
+  const LS_KEY = "dealdrop-alerts", LS_EMAIL = "dealdrop-email";
+  const myAlerts = () => { try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch (e) { return {}; } };
+  const saveMyAlerts = a => { try { localStorage.setItem(LS_KEY, JSON.stringify(a)); } catch (e) {} updateAlertCount(); };
+  const savedEmail = () => { try { return localStorage.getItem(LS_EMAIL) || ""; } catch (e) { return ""; } };
+  const alertsOnline = () => !!(CFG.supabaseUrl && CFG.supabaseAnonKey);
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  function updateAlertCount() {
+    const el = $("#alertCount"); if (!el) return;
+    const list = Object.keys(myAlerts()).filter(id => byId[id]);
+    const hit = list.filter(id => byId[id].best.now <= myAlerts()[id].target).length;
+    el.hidden = !list.length; el.textContent = hit ? `${hit} hit` : list.length;
+  }
+  async function rpc(fn, args) {
+    const r = await fetch(`${CFG.supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/${fn}`, {
+      method: "POST", body: JSON.stringify(args),
+      headers: { apikey: CFG.supabaseAnonKey, Authorization: `Bearer ${CFG.supabaseAnonKey}`, "Content-Type": "application/json" },
+    });
+    const body = await r.json().catch(() => null);
+    if (!r.ok) {
+      const m = (body && body.message) || "";
+      throw new Error(/email_check/.test(m) ? "That email address doesn't look right. Check it and try again."
+        : body && body.hint ? body.hint : `The alert service didn't respond (error ${r.status}). Try again in a minute.`);
+    }
+    return body;
+  }
+  const statusText = a => a.status === "active" ? "Email alert on" : a.status === "pending" ? "Waiting for you to confirm by email" : "Saved on this device only";
+
+  function alertPanel(p) {
+    const a = myAlerts()[p.id];
+    const suggest = Math.max(1, Math.floor(p.best.now * 0.9));
+    const picks = [[5, p.best.now * 0.95], [10, p.best.now * 0.9], [20, p.best.now * 0.8]].map(([n, v]) => [`${n}% lower`, Math.floor(v)]);
+    if (p.low90 != null && p.low90 < p.best.now) picks.unshift(["90-day low", Math.floor(p.low90)]);
+    return `<div class="panel alert-panel" id="alertPanel">
+      <div class="chart-head"><h2>Price alert</h2><span style="font-size:13px;color:var(--muted)">One email when the best price across ${STORES.length > 1 ? "all stores" : "the store"} hits your target</span></div>
+      <form id="alertForm" novalidate>
+        ${a ? `<div class="af-status"><span>${p.best.now <= a.target ? `<span class="pill good">Target reached</span> ` : ""}Your target: <b class="num">${money(a.target)}</b> · ${statusText(a)}${a.email ? ` (${esc(a.email)})` : ""}</span><button type="button" class="linkish" id="af-forget">Forget on this device</button></div>` : ""}
+        <div class="af-row">
+          <label for="af-target">Target price
+            <div class="money-input"><span>$</span><input id="af-target" type="number" inputmode="decimal" min="1" step="0.01" required value="${a ? a.target : suggest}"></div>
+          </label>
+          <label for="af-email">Email
+            <input id="af-email" type="email" autocomplete="email" placeholder="you@example.com" value="${esc((a && a.email) || savedEmail())}">
+          </label>
+          <button class="btn" type="submit" id="af-submit">${a ? "Update alert" : "Notify me"}</button>
+        </div>
+        <div class="af-quick">Quick picks: ${picks.map(([l, v]) => `<button type="button" data-pick="${v}">${l} · ${money(v)}</button>`).join("")}</div>
+        <p class="af-msg" id="af-msg" role="status"></p>
+      </form>
+    </div>`;
+  }
+
+  function wireAlertPanel(p) {
+    const form = $("#alertForm"); if (!form) return;
+    const msg = (t, k = "") => { const m = $("#af-msg"); m.textContent = t; m.className = "af-msg " + k; };
+    const hint = () => {
+      const t = parseFloat($("#af-target").value);
+      if (t >= p.best.now) msg(`The best price is already ${money(p.best.now)} at ${storeById[p.best.store].name}, so this target is met today.`, "ok");
+      else if (t > 0) msg(`${money(p.best.now - t)} below today's best price (${Math.round((1 - t / p.best.now) * 100)}% lower).`);
+    };
+    form.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => { $("#af-target").value = b.dataset.pick; hint(); });
+    $("#af-target").addEventListener("input", hint);
+    const forget = $("#af-forget");
+    if (forget) forget.onclick = () => { const all = myAlerts(); delete all[p.id]; saveMyAlerts(all); viewProduct(p.id); };
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      const target = Math.round(parseFloat($("#af-target").value) * 100) / 100;
+      const email = $("#af-email").value.trim();
+      if (!(target > 0)) return msg("Enter a target price above $0.", "err");
+      if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return msg("That email address doesn't look right. Check it and try again.", "err");
+      const all = myAlerts();
+      if (!email || !alertsOnline()) {
+        all[p.id] = { target, email: "", status: "local", at: Date.now() }; saveMyAlerts(all);
+        viewProduct(p.id);
+        msg(!alertsOnline() && email
+          ? "Target saved on this device. Email alerts aren't switched on for this site yet, so check My alerts to see when it's reached."
+          : "Target saved on this device. Add your email to get notified when it's reached.", "ok");
+        return;
+      }
+      const btn = $("#af-submit"); btn.disabled = true; btn.textContent = "Saving…";
+      try {
+        const status = await rpc("dealdrop_create_alert", { p_email: email, p_product_id: p.id, p_product_name: `${p.brand} ${p.name}`.trim(), p_target: target });
+        try { localStorage.setItem(LS_EMAIL, email); } catch (err) {}
+        all[p.id] = { target, email, status: status === "active" ? "active" : "pending", at: Date.now() }; saveMyAlerts(all);
+        viewProduct(p.id);
+        msg(status === "active" ? `Alert updated. We'll email ${email} when the price hits ${money(target)}.`
+          : `Almost done: we're sending a confirmation link to ${email} (it can take up to 15 minutes). Click it to switch the alert on.`, "ok");
+      } catch (err) {
+        btn.disabled = false; btn.textContent = "Notify me"; msg(err.message, "err");
+      }
+    });
+  }
+
+  function viewAlerts() {
+    catNav(null);
+    const all = myAlerts();
+    const ids = Object.keys(all).sort((a, b) => (all[b].at || 0) - (all[a].at || 0));
+    const rows = ids.map(id => {
+      const a = all[id], p = byId[id];
+      if (!p) return `<div class="alert-row"><div class="art-box"></div><div><h3>Product no longer tracked</h3><div class="meta">Target ${money(a.target)} · ${statusText(a)}</div></div>
+        <div class="right"><button class="linkish" data-forget="${esc(id)}">Forget</button></div></div>`;
+      const gap = p.best.now - a.target;
+      return `<a class="alert-row" href="#p-${p.id}">${artBox(p)}
+        <div><h3>${esc(p.brand)} ${esc(p.name)}</h3><div class="meta"><span>Target <b class="num">${money(a.target)}</b></span><span>Best now <b class="num">${money(p.best.now)}</b> at ${storeById[p.best.store].name}</span><span>${statusText(a)}</span></div></div>
+        <div class="right">${gap <= 0 ? '<span class="pill good">Target reached</span>' : `<span class="pill neutral">${money(Math.round(gap * 100) / 100)} to go</span>`}</div></a>`;
+    });
+    $("#view").innerHTML = `
+      <div class="crumbs"><a href="#home">All deals</a><span>/</span><span>My alerts</span></div>
+      <section>
+        <div class="sec-head"><div><span class="eyebrow">Price alerts</span><h1 style="margin-top:8px">My alerts</h1>
+          <p>Targets you've set on this device. ${alertsOnline() ? "Email alerts are sent once, when the best price reaches your target. To stop one, use the link in any alert email." : "Email alerts aren't switched on for this site yet; targets are saved on this device."}</p></div></div>
+        ${rows.length ? `<div class="alert-list">${rows.join("")}</div>`
+          : `<div class="notice" style="margin:0;max-width:none"><h2>No alerts yet</h2><p>Open any product and set a target price under "Price alert". We'll show it here and email you when the price drops to it.</p><a class="btn" href="#home" style="align-self:start">Browse deals</a></div>`}
+      </section>`;
+    document.querySelectorAll("[data-forget]").forEach(b => b.onclick = () => { const x = myAlerts(); delete x[b.dataset.forget]; saveMyAlerts(x); viewAlerts(); });
+  }
+
+  async function viewTokenAction(kind, token) {
+    catNav(null);
+    const box = (title, body, actions = "") => { $("#view").innerHTML = `<div class="notice"><span class="eyebrow">Price alerts</span><h1>${title}</h1>${body}${actions}</div>`; };
+    if (!UUID.test(token)) return box("This link isn't valid", "<p>Copy the whole link from the email into your browser and try again.</p>");
+    if (!alertsOnline()) return box("Alerts aren't available here", "<p>Open this link on the DealDrop site itself.</p>");
+    box(kind === "confirm" ? "Confirming your alert…" : "Stopping your alert…", "<p>One moment.</p>");
+    try {
+      if (kind === "confirm") {
+        const r = await rpc("dealdrop_confirm_alert", { p_token: token });
+        if (!r) return box("This alert can't be confirmed", "<p>It was stopped, or the link is from an older email. Set the alert again on the product page to get a new link.</p>");
+        const all = myAlerts(); if (all[r.product_id]) { all[r.product_id].status = "active"; saveMyAlerts(all); }
+        box("Alert confirmed", `<p>We'll email you once when <b>${esc(r.product_name)}</b> drops to <b>${money(+r.target_price)}</b> or less.</p>`,
+          byId[r.product_id] ? `<a class="btn" href="#p-${esc(r.product_id)}" style="align-self:start">See price history</a>` : "");
+      } else {
+        const n = await rpc("dealdrop_unsubscribe", { p_token: token, p_all: kind === "unsub-all" });
+        box(n ? (kind === "unsub-all" ? "All your alerts are stopped" : "Alert stopped") : "Nothing to stop",
+          n ? `<p>${kind === "unsub-all" ? `We stopped ${n} alert${n === 1 ? "" : "s"} and won't email you again unless you set a new one.` : "You won't get emails for this product anymore."}</p>` : "<p>This alert was already stopped.</p>",
+          kind === "unsub" ? `<a class="btn secondary" href="#unsub-all-${token}" style="align-self:start">Stop all my alerts</a>` : "");
+      }
+    } catch (err) { box("Something went wrong", `<p>${esc(err.message)}</p>`); }
+  }
+
   /* ---------- router ---------- */
   const route = () => {
     const h = location.hash.slice(1);
     currentChart = null;
-    if (h.startsWith("c-")) viewCat(h.slice(2));
+    if (h === "alerts") viewAlerts();
+    else if (h.startsWith("confirm-")) viewTokenAction("confirm", h.slice(8));
+    else if (h.startsWith("unsub-all-")) viewTokenAction("unsub-all", h.slice(10));
+    else if (h.startsWith("unsub-")) viewTokenAction("unsub", h.slice(6));
+    else if (h.startsWith("c-")) viewCat(h.slice(2));
     else if (h.startsWith("p-")) viewProduct(h.slice(2));
     else viewHome();
     window.scrollTo(0, 0);
@@ -986,6 +1168,8 @@ footer .wrap { padding-block: 20px; }
     try { const r = await fetch("data/prices.json", { cache: "no-store" }); if (r.ok) data = await r.json(); } catch (e) {}
     if (!data || !data.products || !data.products.length) { try { data = JSON.parse(document.getElementById("price-data").textContent); } catch (e) {} }
     if (data && data.products && data.products.length && data.dates && data.dates.length) loadLive(data); else loadSample();
+    try { const r = await fetch("data/site-config.json", { cache: "no-store" }); if (r.ok) CFG = await r.json(); } catch (e) {}
+    updateAlertCount();
     if (MODE === "live") {
       $("#foot").textContent = `Prices from ${storeList()}, checked daily (last check ${new Date(META.updatedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}). Discount = savings against Best Buy's regular price, used as the list price for every store. The 90-day low checks whether a deal is really the cheapest the item has been while we've tracked it. Prices can change at any time; confirm on the store's site before buying.${META.amazonAssociate ? " As an Amazon Associate we earn from qualifying purchases. Amazon prices are accurate as of the time shown and are subject to change." : ""}`;
     }

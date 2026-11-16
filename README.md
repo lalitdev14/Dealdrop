@@ -4,7 +4,8 @@ A static site that ranks Black Friday deals by discount, with categories, per-st
 
 - **Home**: countdown to Black Friday, category grid, top 12 highest discounts (sort by % off or $ saved).
 - **Category**: every tracked product, sortable by % off / $ saved / price, filterable by best store and "90-day lows only".
-- **Product**: highest-discount store with a Buy link, price-history chart, store comparison table, and a verdict on whether the price is really the lowest seen.
+- **Product**: highest-discount store with a Buy link, price-history chart, store comparison table, a verdict on whether the price is really the lowest seen, and a **price alert** form.
+- **My alerts**: every target set on this device, with the current best price and "Target reached" status.
 
 ## Real prices (US: Best Buy, Walmart, Amazon)
 
@@ -56,6 +57,45 @@ BESTBUY_API_KEY=your-key node scripts/update-prices.mjs --find-category "Laptops
 - Amazon links use your partner tag, and the page shows the required Associates disclosure and an
   "accurate as of" note whenever Amazon prices are present.
 - Daily updates are the minimum; Amazon expects displayed prices to be refreshed at least every 24 hours.
+
+## Price alerts (target price + email)
+
+On any product page, a visitor enters a target price and their email. The best price across all
+stores is checked after every daily price update; when it is at or below the target, one email
+goes out with the price, the store and a Buy link. Alerts are one-time; setting a new target
+re-arms it.
+
+How it fits together:
+
+- **Supabase** stores alerts. `supabase/setup.sql` creates one table and three functions
+  (create, confirm, unsubscribe). The site only calls those functions with the public anon key;
+  the table itself can't be read with that key.
+- **Double opt-in**: each new alert gets a confirmation email first (sent within ~15 minutes by
+  `.github/workflows/alert-confirmations.yml`), so nobody can sign up someone else's address.
+  Each address can watch up to 25 products, and confirmation emails aren't re-sent more than once a day.
+- **Resend** sends the emails (`scripts/send-alerts.mjs`). Every email has an unsubscribe link and a
+  `List-Unsubscribe` header; the unsubscribe page also offers "Stop all my alerts".
+- Without Supabase configured, the form still saves targets on the visitor's device and shows them
+  under **My alerts**, but no emails are sent.
+
+### Setup
+
+1. Create a Supabase project (free) at https://supabase.com/dashboard, open **SQL Editor**, paste
+   `supabase/setup.sql` and run it.
+2. In **Project Settings → API**, copy the **Project URL** and the **anon public** key into
+   `data/site-config.json`. Both are meant to be public.
+3. Create a Resend account at https://resend.com, verify a domain you own (needed to email anyone
+   other than yourself) and create an API key.
+4. Add GitHub repository **secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (Project Settings →
+   API → service_role; keep it secret), `RESEND_API_KEY`, `ALERT_FROM` (e.g.
+   `DealDrop <alerts@yourdomain.com>`). Add a repository **variable** `SITE_URL` with the public
+   address of the site, used for links in emails.
+
+Test the email script without sending anything:
+
+```bash
+ALERTS_MOCK_FILE=alerts.json EMAIL_DRY_RUN=1 SITE_URL=https://example.com/ node scripts/send-alerts.mjs
+```
 
 ### Hosting
 
