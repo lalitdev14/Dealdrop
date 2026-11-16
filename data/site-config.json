@@ -1,4 +1,6 @@
 {
   "supabaseUrl": "",
-  "supabaseAnonKey": ""
+  "supabaseAnonKey": "",
+  "amazonTag": "",
+  "sovrnKey": ""
 }
