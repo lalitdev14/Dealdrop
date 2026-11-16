@@ -78,7 +78,12 @@ How it fits together:
 - Without Supabase configured, the form still saves targets on the visitor's device and shows them
   under **My alerts**, but no emails are sent.
 
-### Setup
+**Current status: device-only.** `data/site-config.json` is empty, so the form saves targets in
+the visitor's browser (shown under My alerts, with "Target reached" marks) and hides the email field.
+The email pieces below are in place but dormant: the 15-minute confirmation workflow is unscheduled,
+and the daily alert step skips itself while its secrets are missing.
+
+### Setup (to switch email on later)
 
 1. Create a Supabase project (free) at https://supabase.com/dashboard, open **SQL Editor**, paste
    `supabase/setup.sql` and run it.
@@ -90,6 +95,7 @@ How it fits together:
    API → service_role; keep it secret), `RESEND_API_KEY`, `ALERT_FROM` (e.g.
    `DealDrop <alerts@yourdomain.com>`). Add a repository **variable** `SITE_URL` with the public
    address of the site, used for links in emails.
+5. Uncomment the `schedule` block in `.github/workflows/alert-confirmations.yml`.
 
 Test the email script without sending anything:
 

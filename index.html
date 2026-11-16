@@ -171,6 +171,7 @@ img.pic { width: 80%; height: 86%; object-fit: contain; display: block; }
 .my-alerts .count { background: var(--accent); color: var(--accent-ink); font: 700 11px/1 var(--f-mono); padding: 3px 6px; border-radius: 999px; }
 .alert-panel form { display: flex; flex-direction: column; gap: 12px; }
 .af-row { display: grid; grid-template-columns: minmax(0, 180px) minmax(0, 1fr) auto; gap: 12px; align-items: end; }
+.af-row.no-email { grid-template-columns: minmax(0, 220px) auto; justify-content: start; }
 .af-row label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--fg-2); min-width: 0; }
 .af-row input { font: inherit; font-size: 15px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); width: 100%; min-width: 0; }
 .af-row input:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
@@ -283,7 +284,7 @@ footer .wrap { padding-block: 20px; }
   .p-art svg.art { width: auto; height: 86%; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .best-box { min-width: 0; }
-  .af-row { grid-template-columns: minmax(0, 1fr); }
+  .af-row, .af-row.no-email { grid-template-columns: minmax(0, 1fr); }
   .alert-row { grid-template-columns: 52px minmax(0, 1fr); }
   .alert-row .art-box { width: 52px; height: 52px; }
   .alert-row .right { grid-column: 2; align-items: start; text-align: left; flex-direction: row; flex-wrap: wrap; }
@@ -1042,17 +1043,17 @@ footer .wrap { padding-block: 20px; }
     const picks = [[5, p.best.now * 0.95], [10, p.best.now * 0.9], [20, p.best.now * 0.8]].map(([n, v]) => [`${n}% lower`, Math.floor(v)]);
     if (p.low90 != null && p.low90 < p.best.now) picks.unshift(["90-day low", Math.floor(p.low90)]);
     return `<div class="panel alert-panel" id="alertPanel">
-      <div class="chart-head"><h2>Price alert</h2><span style="font-size:13px;color:var(--muted)">One email when the best price across ${STORES.length > 1 ? "all stores" : "the store"} hits your target</span></div>
+      <div class="chart-head"><h2>Price alert</h2><span style="font-size:13px;color:var(--muted)">${alertsOnline() ? `One email when the best price across ${STORES.length > 1 ? "all stores" : "the store"} hits your target` : "Saved on this device. We'll flag it here and in My alerts when the price reaches your target."}</span></div>
       <form id="alertForm" novalidate>
         ${a ? `<div class="af-status"><span>${p.best.now <= a.target ? `<span class="pill good">Target reached</span> ` : ""}Your target: <b class="num">${money(a.target)}</b> · ${statusText(a)}${a.email ? ` (${esc(a.email)})` : ""}</span><button type="button" class="linkish" id="af-forget">Forget on this device</button></div>` : ""}
-        <div class="af-row">
+        <div class="af-row${alertsOnline() ? "" : " no-email"}">
           <label for="af-target">Target price
             <div class="money-input"><span>$</span><input id="af-target" type="number" inputmode="decimal" min="1" step="0.01" required value="${a ? a.target : suggest}"></div>
           </label>
-          <label for="af-email">Email
+          ${alertsOnline() ? `<label for="af-email">Email
             <input id="af-email" type="email" autocomplete="email" placeholder="you@example.com" value="${esc((a && a.email) || savedEmail())}">
-          </label>
-          <button class="btn" type="submit" id="af-submit">${a ? "Update alert" : "Notify me"}</button>
+          </label>` : ""}
+          <button class="btn" type="submit" id="af-submit">${alertsOnline() ? (a ? "Update alert" : "Notify me") : (a ? "Update target" : "Save target")}</button>
         </div>
         <div class="af-quick">Quick picks: ${picks.map(([l, v]) => `<button type="button" data-pick="${v}">${l} · ${money(v)}</button>`).join("")}</div>
         <p class="af-msg" id="af-msg" role="status"></p>
@@ -1075,16 +1076,15 @@ footer .wrap { padding-block: 20px; }
     form.addEventListener("submit", async e => {
       e.preventDefault();
       const target = Math.round(parseFloat($("#af-target").value) * 100) / 100;
-      const email = $("#af-email").value.trim();
+      const email = $("#af-email") ? $("#af-email").value.trim() : "";
       if (!(target > 0)) return msg("Enter a target price above $0.", "err");
       if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return msg("That email address doesn't look right. Check it and try again.", "err");
       const all = myAlerts();
       if (!email || !alertsOnline()) {
         all[p.id] = { target, email: "", status: "local", at: Date.now() }; saveMyAlerts(all);
         viewProduct(p.id);
-        msg(!alertsOnline() && email
-          ? "Target saved on this device. Email alerts aren't switched on for this site yet, so check My alerts to see when it's reached."
-          : "Target saved on this device. Add your email to get notified when it's reached.", "ok");
+        msg(alertsOnline() ? "Target saved on this device. Add your email to get notified when it's reached."
+          : `Target saved. ${p.best.now <= target ? "Today's best price already meets it." : "Check back here or in My alerts; reached targets are marked."}`, "ok");
         return;
       }
       const btn = $("#af-submit"); btn.disabled = true; btn.textContent = "Saving…";
