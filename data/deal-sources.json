@@ -18,7 +18,7 @@
     { "id": "dealnews-ebay", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s50/eBay/?rss=1" },
     { "id": "dealnews-newegg", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s504/Newegg/?rss=1" },
     { "id": "reddit-top", "type": "reddit", "enabled": true, "ranked": true, "url": "https://www.reddit.com/r/deals+GameDeals+frugalmalefashion+frugalfemalefashion+techdeals+NintendoSwitchDeals+PS5Deals+XboxSeriesXDeals+AppleDeals+LaptopDeals+MonitorDeals+headphonedeals+kindledeals+BoardGameDeals+lego_deals+SneakerDeals+AmazonDeals+buildapcsales+Costco+ebaydeals/top/.rss?t=day" },
-    { "id": "reddit-hot", "type": "reddit", "enabled": true, "ranked": true, "url": "https://www.reddit.com/r/deals+GameDeals+frugalmalefashion+frugalfemalefashion+techdeals+NintendoSwitchDeals+PS5Deals+XboxSeriesXDeals+AppleDeals+LaptopDeals+MonitorDeals+headphonedeals+kindledeals+BoardGameDeals+lego_deals+SneakerDeals+AmazonDeals+buildapcsales+Costco+ebaydeals/hot/.rss" },
+    { "id": "reddit-hot", "type": "reddit", "enabled": false, "ranked": true, "url": "https://www.reddit.com/r/deals+GameDeals+frugalmalefashion+frugalfemalefashion+techdeals+NintendoSwitchDeals+PS5Deals+XboxSeriesXDeals+AppleDeals+LaptopDeals+MonitorDeals+headphonedeals+kindledeals+BoardGameDeals+lego_deals+SneakerDeals+AmazonDeals+buildapcsales+Costco+ebaydeals/hot/.rss" },
     { "id": "9to5toys", "type": "rss", "enabled": true, "ranked": true, "url": "https://9to5toys.com/feed/" },
     { "id": "bensbargains", "type": "rss", "enabled": true, "ranked": false, "priceInBody": true, "url": "https://www.bensbargains.com/rss/" },
     { "id": "dealcatcher", "type": "rss", "enabled": true, "ranked": false, "url": "https://www.dealcatcher.com/rss" },
