@@ -1,0 +1,33 @@
+name: Send alert confirmation emails
+
+# Email alerts are switched off for now, so this doesn't run on a schedule.
+# To switch email on: finish "Price alerts → Setup" in README.md,
+# then uncomment the schedule below (it runs every 15 minutes).
+on:
+  # schedule:
+  #   - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: alert-emails
+  cancel-in-progress: false
+
+jobs:
+  confirm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Send confirmation emails
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ALERT_FROM: ${{ secrets.ALERT_FROM }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: node scripts/send-alerts.mjs --confirmations-only
