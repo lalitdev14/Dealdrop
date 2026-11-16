@@ -17,6 +17,24 @@
     { "id": "dealnews-bestbuy", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s560/Best-Buy/?rss=1" },
     { "id": "dealnews-ebay", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s50/eBay/?rss=1" },
     { "id": "dealnews-newegg", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s504/Newegg/?rss=1" },
-    { "id": "reddit", "type": "reddit", "enabled": true, "ranked": true, "url": "https://www.reddit.com/r/buildapcsales/top/.rss?t=day" }
+    { "id": "reddit-top", "type": "reddit", "enabled": true, "ranked": true, "url": "https://www.reddit.com/r/deals+GameDeals+frugalmalefashion+frugalfemalefashion+techdeals+NintendoSwitchDeals+PS5Deals+XboxSeriesXDeals+AppleDeals+LaptopDeals+MonitorDeals+headphonedeals+kindledeals+BoardGameDeals+lego_deals+SneakerDeals+AmazonDeals+buildapcsales+Costco+ebaydeals/top/.rss?t=day" },
+    { "id": "reddit-hot", "type": "reddit", "enabled": true, "ranked": true, "url": "https://www.reddit.com/r/deals+GameDeals+frugalmalefashion+frugalfemalefashion+techdeals+NintendoSwitchDeals+PS5Deals+XboxSeriesXDeals+AppleDeals+LaptopDeals+MonitorDeals+headphonedeals+kindledeals+BoardGameDeals+lego_deals+SneakerDeals+AmazonDeals+buildapcsales+Costco+ebaydeals/hot/.rss" },
+    { "id": "9to5toys", "type": "rss", "enabled": true, "ranked": true, "url": "https://9to5toys.com/feed/" },
+    { "id": "bensbargains", "type": "rss", "enabled": true, "ranked": false, "priceInBody": true, "url": "https://www.bensbargains.com/rss/" },
+    { "id": "dealcatcher", "type": "rss", "enabled": true, "ranked": false, "url": "https://www.dealcatcher.com/rss" },
+    { "id": "hip2save", "type": "rss", "enabled": true, "ranked": false, "match": "post_type=deals", "url": "https://www.hip2save.com/feed/" },
+    { "id": "dealnews-electronics", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/c142/Electronics/?rss=1" },
+    { "id": "dealnews-computers", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/c39/Computers/?rss=1" },
+    { "id": "dealnews-home-garden", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/c196/Home-Garden/?rss=1" },
+    { "id": "dealnews-clothing-accessories", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/c202/Clothing-Accessories/?rss=1" },
+    { "id": "dealnews-kohls", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s1009/Kohls/?rss=1" },
+    { "id": "dealnews-macys", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s288/Macys/?rss=1" },
+    { "id": "dealnews-wayfair", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s38875/Wayfair/?rss=1" },
+    { "id": "dealnews-dell-technologies", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s604/Dell-Technologies/?rss=1" },
+    { "id": "dealnews-lenovo", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s1662/Lenovo/?rss=1" },
+    { "id": "dealnews-samsung", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s6058/Samsung/?rss=1" },
+    { "id": "dealnews-nike", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s1186/Nike/?rss=1" },
+    { "id": "dealnews-apple", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s415/Apple/?rss=1" },
+    { "id": "dealnews-woot-an-amazon-company", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s1692/Woot-An-Amazon-Company/?rss=1" }
   ]
 }
