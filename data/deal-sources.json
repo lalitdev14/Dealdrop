@@ -1,0 +1,7 @@
+{
+  "feeds": {
+    "slickdeals": { "enabled": true, "url": "https://slickdeals.net/newsearch.php?mode=frontpage&searcharea=deals&searchin=first&rss=1" },
+    "dealnews": { "enabled": true, "url": "https://www.dealnews.com/?rss=1" },
+    "reddit": { "enabled": true, "url": "https://www.reddit.com/r/buildapcsales/top/.rss?t=day" }
+  }
+}
