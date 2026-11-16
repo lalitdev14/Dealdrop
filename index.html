@@ -52,6 +52,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; }
 body {
   background: var(--bg); color: var(--fg);
@@ -160,12 +161,17 @@ svg.art { width: 62%; height: auto; max-height: 100%; display: block; transition
 .p-art svg.art { width: 82%; }
 .s-thumb { width: 40px; height: 40px; flex: none; border-radius: 6px; }
 .s-thumb svg.art { width: 86%; }
+.art-box.has-pic { background: #fff; }
+img.pic { width: 80%; height: 86%; object-fit: contain; display: block; }
+.p-art img.pic { width: 88%; }
+.s-thumb img.pic { width: 92%; }
+.chart-note { padding: 28px 16px; text-align: center; color: var(--fg-2); }
 .deal h3 { font: 600 15px/1.3 var(--f-body); }
 .deal .brandline { font-size: 12px; color: var(--muted); }
 .price-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-top: auto; }
 .price { font: 700 20px/1 var(--f-mono); font-variant-numeric: tabular-nums; }
 .was { font: 500 13px/1 var(--f-mono); color: var(--muted); text-decoration: line-through; }
-.at { font-size: 12px; color: var(--fg-2); display: flex; align-items: center; gap: 6px; }
+.at { font-size: 12px; color: var(--fg-2); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
 .spark { width: 100%; height: 34px; display: block; }
 .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
@@ -268,8 +274,9 @@ footer .wrap { padding-block: 20px; }
 
 <main class="wrap" id="view"></main>
 
-<footer><div class="wrap">Prices are sample data generated for this demo, shown as of Nov 15, 2026. Discount = savings against the manufacturer's list price (MSRP). The 90-day low checks whether a "deal" is really the cheapest the item has been.</div></footer>
+<footer><div class="wrap" id="foot">Prices are sample data generated for this demo, shown as of Nov 15, 2026. Discount = savings against the manufacturer's list price (MSRP). The 90-day low checks whether a "deal" is really the cheapest the item has been.</div></footer>
 
+<script id="price-data" type="application/json">null</script>
 <script>
 (() => {
   /* ---------- deterministic sample data ---------- */
@@ -277,20 +284,21 @@ footer .wrap { padding-block: 20px; }
   const rnd = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
   const pick = a => a[Math.floor(rnd() * a.length)];
 
-  const TODAY = new Date(2026, 10, 15);
+  let END = new Date(2026, 10, 15);
+  let MODE = "sample", META = {};
   const BF = new Date(2026, 10, 27);
-  const DAYS = 90;
-  const dateAt = i => { const d = new Date(TODAY); d.setDate(d.getDate() - (DAYS - 1 - i)); return d; };
+  let DAYS = 90;
+  const dateAt = i => { if (MODE === "live") return new Date(META.dates[i] + "T12:00:00"); const d = new Date(END); d.setDate(d.getDate() - (DAYS - 1 - i)); return d; };
   const fmtDate = d => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
-  const STORES = [
+  let STORES = [
     { id: "northgate", name: "Northgate", c: "--s1" },
     { id: "voltmart", name: "Voltmart", c: "--s2" },
     { id: "shopridge", name: "ShopRidge", c: "--s3" },
     { id: "kestrel", name: "Kestrel & Co", c: "--s4" },
     { id: "bazaarly", name: "Bazaarly", c: "--s5" },
   ];
-  const storeById = Object.fromEntries(STORES.map(s => [s.id, s]));
+  let storeById = Object.fromEntries(STORES.map(s => [s.id, s]));
 
   const ICONS = {
     tv: '<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
@@ -306,9 +314,9 @@ footer .wrap { padding-block: 20px; }
     sports: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17l4-8h5l3 8M10 9 8 5h3"/>',
     watch: '<rect x="6" y="6" width="12" height="12" rx="3"/><path d="M9 6V2h6v4M9 18v4h6v-4M12 10v2l1.5 1.5"/>',
   };
-  const icon = (k, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k]}</svg>`;
+  const icon = (k, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k] || ICONS.tv}</svg>`;
 
-  const CATS = [
+  let CATS = [
     { id: "tvs", name: "TVs & Displays", ico: "tv", items: [
       ["Aurion", "65\" OLED evo 4K Smart TV", 1999], ["Lumetra", "55\" QLED 4K 144Hz TV", 899], ["Corvex", "75\" Mini-LED 4K Google TV", 1499],
       ["Halden", "43\" 4K UHD Fire TV", 349], ["Aurion", "27\" 4K IPS Monitor", 429], ["Lumetra", "34\" Curved Ultrawide Monitor", 599], ["Corvex", "Laser Projector 4K", 2299] ] },
@@ -350,7 +358,43 @@ footer .wrap { padding-block: 20px; }
   const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const round99 = v => v < 20 ? Math.round(v * 100) / 100 : Math.max(1, Math.round(v)) - 0.01;
 
-  const PRODUCTS = [];
+  let PRODUCTS = [], byId = {}, catById = {};
+  const vals = a => a.filter(v => v != null);
+
+  /* Turns raw { msrp, offers: [{ store, url?, hist: [price|null per day] }] } into ranked offers + stats. */
+  const finalize = p => {
+    const offers = p.offers.map(o => {
+      const now = o.hist[o.hist.length - 1];
+      if (now == null) return null;                       // not sold / out of stock today
+      return { ...o, now, disc: (p.msrp - now) / p.msrp, low90: Math.min(...vals(o.hist)) };
+    }).filter(Boolean).sort((a, b) => a.now - b.now);
+    if (!offers.length || !(p.msrp > 0)) return null;
+    const prev = offers.flatMap(o => vals(o.hist.slice(0, -1)));
+    let firstIdx = DAYS - 1;
+    offers.forEach(o => { const i = o.hist.findIndex(v => v != null); if (i >= 0 && i < firstIdx) firstIdx = i; });
+    const best = offers[0];
+    return { ...p, ico: (catById[p.cat] || {}).ico || "tv", offers, best, firstIdx,
+      low90: prev.length ? Math.min(...prev) : null, disc: best.disc, save: p.msrp - best.now };
+  };
+  const setProducts = raw => {
+    catById = Object.fromEntries(CATS.map(c => [c.id, c]));
+    PRODUCTS = raw.map(finalize).filter(Boolean);
+    byId = Object.fromEntries(PRODUCTS.map(p => [p.id, p]));
+    CATS = CATS.filter(c => PRODUCTS.some(p => p.cat === c.id));
+  };
+
+  function loadLive(d) {
+    MODE = "live"; META = d;
+    DAYS = d.dates.length;
+    END = new Date(d.dates[DAYS - 1] + "T12:00:00");
+    STORES = d.stores.map((st, i) => ({ ...st, c: "--s" + ((i % 5) + 1) }));
+    storeById = Object.fromEntries(STORES.map(st => [st.id, st]));
+    CATS = d.categories;
+    setProducts(d.products);
+  }
+
+  function loadSample() {
+  const RAW = [];
   CATS.forEach(cat => {
     cat.items.forEach(([brand, name, msrp]) => {
       const nStores = 3 + Math.floor(rnd() * 3);
@@ -373,19 +417,13 @@ footer .wrap { padding-block: 20px; }
           if (i >= earlyStart) p = msrp * (1 - myDepth * (i >= 86 ? 1 : 0.8));
           hist.push(round99(p));
         }
-        const now = hist[DAYS - 1];
-        return { store: st.id, hist, now, disc: (msrp - now) / msrp, low90: Math.min(...hist) };
-      }).sort((a, b) => a.now - b.now);
-      const best = offers[0];
-      const low90 = Math.min(...offers.map(o => Math.min(...o.hist.slice(0, DAYS - 1))));
-      PRODUCTS.push({
-        id: slug(brand + " " + name).slice(0, 48), cat: cat.id, brand, name, msrp, ico: cat.ico,
-        offers, best, low90, disc: best.disc, save: msrp - best.now,
+        return { store: st.id, hist };
       });
+      RAW.push({ id: slug(brand + " " + name).slice(0, 48), cat: cat.id, brand, name, msrp, offers });
     });
   });
-  const byId = Object.fromEntries(PRODUCTS.map(p => [p.id, p]));
-  const catById = Object.fromEntries(CATS.map(c => [c.id, c]));
+  setProducts(RAW);
+  }
 
   /* ---------- helpers ---------- */
   const $ = s => document.querySelector(s);
@@ -563,6 +601,7 @@ footer .wrap { padding-block: 20px; }
   const productArt = (p, cls = "") => {
     const u = "a" + (artUid++);
     const kind = kindOf(p.name);
+    if (kind === "box") return `<svg class="art" viewBox="0 0 120 120" role="img" aria-label="${esc(p.brand + " " + p.name)}"><g transform="translate(24 20) scale(3)" fill="none" stroke="#5b6475" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${ICONS[p.ico] || ICONS.tv}</g></svg>`;
     const c = FINISHES[[...p.id].reduce((s, ch) => s + ch.charCodeAt(0), 0) % FINISHES.length];
     const body = DRAW[kind](c, u).replace(/__S/g, u + "s");
     return `<svg class="art ${cls}" viewBox="0 0 120 120" role="img" aria-label="${esc(p.brand + " " + p.name)}">
@@ -573,10 +612,19 @@ footer .wrap { padding-block: 20px; }
       </defs>
       <ellipse cx="60" cy="108" rx="40" ry="4" fill="#000" opacity=".12"/>${body}</svg>`;
   };
+  /* Real product photo when the data has one (falls back to the drawing if it fails to load). */
+  const artBox = (p, cls = "", extra = "") => p.image
+    ? `<div class="art-box has-pic ${cls}"><img class="pic" src="${esc(p.image)}" alt="${esc(p.brand + " " + p.name)}" loading="lazy" referrerpolicy="no-referrer"><span class="pic-fb" hidden>${productArt(p)}</span>${extra}</div>`
+    : `<div class="art-box ${cls}">${productArt(p)}${extra}</div>`;
+  document.addEventListener("error", e => {
+    const t = e.target;
+    if (t && t.matches && t.matches("img.pic")) { t.hidden = true; t.parentNode.classList.remove("has-pic"); t.nextElementSibling.hidden = false; }
+  }, true);
 
 
   const verdictOf = p => {
     const now = p.best.now;
+    if (p.low90 == null || DAYS - p.firstIdx < 7) return { k: "neutral", t: "Tracking since " + fmtDate(dateAt(p.firstIdx)), fresh: true };
     if (now <= p.low90 + 0.01) return { k: "good", t: "Lowest in 90 days" };
     if (now <= p.low90 * 1.04) return { k: "neutral", t: "Near 90-day low" };
     return { k: "warn", t: "Was cheaper before" };
@@ -584,11 +632,13 @@ footer .wrap { padding-block: 20px; }
 
   const sparkline = (p, w = 240, h = 34) => {
     const series = p.best.hist;
-    const lo = Math.min(...series), hi = Math.max(...series, p.msrp);
-    const x = i => (i / (DAYS - 1)) * w, y = v => h - 3 - ((v - lo) / (hi - lo || 1)) * (h - 6);
-    const d = series.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
+    const lo = Math.min(...vals(series)), hi = Math.max(...vals(series), p.msrp);
+    const x = i => DAYS > 1 ? (i / (DAYS - 1)) * w : 0, y = v => h - 3 - ((v - lo) / (hi - lo || 1)) * (h - 6);
+    let d = "", pen = false;
+    series.forEach((v, i) => { if (v == null) { pen = false; return; } d += `${pen ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`; pen = true; });
+    if (vals(series).length < 2) d = `M0,${y(p.best.now).toFixed(1)}L${w},${y(p.best.now).toFixed(1)}`;
     return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
-      <path d="${d}L${w},${h}L0,${h}Z" fill="var(${storeById[p.best.store].c})" opacity=".12"/>
+      <path d="${series.includes(null) ? "" : d + `L${w},${h}L0,${h}Z`}" fill="var(${storeById[p.best.store].c})" opacity=".12"/>
       <path d="${d}" fill="none" stroke="var(${storeById[p.best.store].c})" stroke-width="2" vector-effect="non-scaling-stroke"/>
     </svg>`;
   };
@@ -596,11 +646,11 @@ footer .wrap { padding-block: 20px; }
   const dealCard = p => {
     const v = verdictOf(p);
     return `<a class="deal" href="#p-${p.id}">
-      <div class="art-box">${productArt(p)}<span class="tag">-${pct(p.disc)}</span></div>
+      ${artBox(p, "", `<span class="tag">-${pct(p.disc)}</span>`)}
       <div><div class="brandline">${esc(p.brand)} · ${esc(catById[p.cat].name)}</div><h3>${esc(p.name)}</h3></div>
       ${sparkline(p)}
       <div class="price-row"><span class="price">${money(p.best.now)}</span><span class="was">${money(p.msrp)}</span></div>
-      <div class="deal-top" style="align-items:center"><span class="at">${storeDot(p.best.store)}Best at ${storeById[p.best.store].name}</span><span class="pill ${v.k}">${v.t}</span></div>
+      <div class="deal-top" style="align-items:center;flex-wrap:wrap"><span class="at">${storeDot(p.best.store)}Best at ${storeById[p.best.store].name}</span><span class="pill ${v.k}">${v.t}</span></div>
     </a>`;
   };
 
@@ -621,9 +671,9 @@ footer .wrap { padding-block: 20px; }
     $("#view").innerHTML = `
       <section class="hero">
         <div class="hero-copy">
-          <span class="eyebrow">Black Friday 2026 · live tracker</span>
+          <span class="eyebrow">Black Friday 2026 · ${MODE === "live" ? "live prices" : "demo with sample prices"}</span>
           <h1>The deepest markdowns, store by store.</h1>
-          <p class="sub">We track ${PRODUCTS.length} popular products across ${STORES.length} stores and rank them by discount off list price. Open any product to see 90 days of price history and which store is cheapest right now.</p>
+          <p class="sub">We track ${PRODUCTS.length} ${MODE === "live" ? "of the most discounted products at " + STORES.map(st => st.name).join(" and ") : "popular products across " + STORES.length + " stores"} and rank them by discount off list price. Open any product to see ${MODE === "live" ? "its price history (up to 90 days, growing daily)" : "90 days of price history"} and which store is cheapest right now.</p>
           <div class="stats">
             <div><b class="num">${pct(maxD)}</b>biggest discount</div>
             <div><b class="num">${pct(avg)}</b>average off MSRP</div>
@@ -656,7 +706,7 @@ footer .wrap { padding-block: 20px; }
         </div>
         <div class="deals">${top.map(dealCard).join("")}</div>
       </section>
-      <p class="sample-note" style="margin-top:24px">Demo build: products, stores and prices are sample data.</p>`;
+      <p class="sample-note" style="margin-top:24px">${MODE === "live" ? `Prices last checked ${new Date(META.updatedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}. Prices change often; confirm on the store's site.` : "Demo build: products, stores and prices are sample data. Real prices appear after the first daily price update runs."}</p>`;
     document.querySelectorAll("[data-hs]").forEach(b => b.onclick = () => { homeSort = b.dataset.hs; viewHome(); });
     tick();
   };
@@ -680,7 +730,7 @@ footer .wrap { padding-block: 20px; }
       <section>
         <div class="sec-head">
           <div><span class="eyebrow">Category</span><h1 style="margin-top:8px">${esc(c.name)}</h1>
-          <p>${ps.length} tracked products · up to ${pct(Math.max(...ps.map(p => p.disc)))} off · cheapest most often at <b>${winCounts[0][0].name}</b> (${winCounts[0][1]} of ${ps.length})</p></div>
+          <p>${ps.length} tracked products · up to ${pct(Math.max(...ps.map(p => p.disc)))} off · ${winCounts.length ? `cheapest most often at <b>${winCounts[0][0].name}</b> (${winCounts[0][1]} of ${ps.length})` : ""}</p></div>
         </div>
         <div class="toolbar">
           <div class="seg" role="group" aria-label="Sort">
@@ -707,22 +757,24 @@ footer .wrap { padding-block: 20px; }
     const c = catById[p.cat];
     catNav(p.cat);
     const v = verdictOf(p);
-    const allHist = p.offers.flatMap(o => o.hist);
+    const allHist = p.offers.flatMap(o => vals(o.hist));
     const high90 = Math.max(...allHist);
     const avg90 = allHist.reduce((s, x) => s + x, 0) / allHist.length;
-    const lowIdx = (() => { let bi = 0, bv = Infinity; p.offers.forEach(o => o.hist.slice(0, DAYS - 1).forEach((x, i) => { if (x < bv) { bv = x; bi = i; } })); return bi; })();
-    const vText = v.k === "good"
+    const lowIdx = (() => { let bi = 0, bv = Infinity; p.offers.forEach(o => o.hist.slice(0, DAYS - 1).forEach((x, i) => { if (x != null && x < bv) { bv = x; bi = i; } })); return bi; })();
+    const vText = v.fresh
+      ? `We started tracking this item on ${fmtDate(dateAt(p.firstIdx))}. The verdict needs about a week of daily prices; until then, compare the stores below.`
+      : v.k === "good"
       ? `No store has sold it below ${money(p.best.now)} in the last 90 days. ${storeById[p.best.store].name} has held this price since ${fmtDate(dateAt(lowIdx))}.`
       : v.k === "neutral"
         ? `${money(p.best.now)} is within 4% of the 90-day low of ${money(p.low90)}. A fair buy; it may dip a little more on Black Friday itself.`
         : `It sold for ${money(p.low90)} on ${fmtDate(dateAt(lowIdx))}. The discount is real against MSRP, but you could wait for a better price.`;
-    const fake = p.offers.filter(o => Math.max(...o.hist.slice(50, 80)) > p.msrp);
+    const fake = p.offers.filter(o => Math.max(0, ...vals(o.hist.slice(0, -1))) > p.msrp * 1.005);
     const related = PRODUCTS.filter(x => x.cat === p.cat && x.id !== p.id).sort((a, b) => b.disc - a.disc).slice(0, 4);
 
     $("#view").innerHTML = `
       <div class="crumbs"><a href="#home">All deals</a><span>/</span><a href="#c-${c.id}">${esc(c.name)}</a><span>/</span><span>${esc(p.name)}</span></div>
       <div class="p-head">
-        <div class="art-box p-art">${productArt(p)}</div>
+        ${artBox(p, "p-art")}
         <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
           <span class="eyebrow">${esc(p.brand)}</span>
           <h1>${esc(p.name)}</h1>
@@ -730,7 +782,7 @@ footer .wrap { padding-block: 20px; }
             <span class="tag">-${pct(p.disc)}</span>
             <span class="pill ${v.k}">${v.t}</span>
             <span class="pill neutral">MSRP ${money(p.msrp)}</span>
-            <span class="pill neutral">${p.offers.length} stores tracked</span>
+            <span class="pill neutral">${p.offers.length} ${p.offers.length === 1 ? "store" : "stores"} tracked</span>
           </div>
         </div>
         <div class="best-box">
@@ -738,6 +790,7 @@ footer .wrap { padding-block: 20px; }
           <span class="store">${storeDot(p.best.store)}${storeById[p.best.store].name}</span>
           <div class="price-row"><span class="price">${money(p.best.now)}</span><span class="was">${money(p.msrp)}</span></div>
           <span style="font-size:13px;color:var(--fg-2)">You save <b class="num">${money(Math.round(p.save * 100) / 100)}</b> (${pct(p.disc)} off)</span>
+          ${p.best.url ? `<a class="btn" href="${esc(p.best.url)}" target="_blank" rel="noopener">Buy at ${esc(storeById[p.best.store].name)} ↗</a>` : ""}
         </div>
       </div>
 
@@ -746,13 +799,13 @@ footer .wrap { padding-block: 20px; }
           ${v.k === "warn"
             ? '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3 2 21h20z"/><path d="M12 10v5M12 18h.01"/></svg>'
             : '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>'}
-          <div><strong>${v.k === "warn" ? "Good discount, not the best price" : v.t === "Lowest in 90 days" ? "Real deal: lowest price in 90 days" : "Solid deal: close to the 90-day low"}</strong><p>${vText}</p>
-          ${fake.length ? `<p>Watch out: ${fake.map(o => storeById[o.store].name).join(", ")} raised the price above MSRP in October before cutting it, which makes its "% off" look bigger than it is.</p>` : ""}</div>
+          <div><strong>${v.k === "warn" ? "Good discount, not the best price" : v.fresh ? "New to the tracker" : v.t === "Lowest in 90 days" ? "Real deal: lowest price in 90 days" : "Solid deal: close to the 90-day low"}</strong><p>${vText}</p>
+          ${fake.length ? `<p>Watch out: ${fake.map(o => storeById[o.store].name).join(", ")} charged more than list price earlier in the tracked period before cutting it, which makes its "% off" look bigger than it is.</p>` : ""}</div>
         </div>
 
         <div class="kpis">
           <div class="kpi"><small>Best price now</small><b>${money(p.best.now)}</b><span>${storeById[p.best.store].name}</span></div>
-          <div class="kpi"><small>90-day low</small><b>${money(p.low90)}</b><span>${fmtDate(dateAt(lowIdx))}</span></div>
+          <div class="kpi"><small>90-day low</small><b>${p.low90 == null ? "—" : money(p.low90)}</b><span>${p.low90 == null ? "needs more history" : fmtDate(dateAt(lowIdx))}</span></div>
           <div class="kpi"><small>90-day average</small><b>${money(Math.round(avg90))}</b><span>all stores</span></div>
           <div class="kpi"><small>90-day high</small><b>${money(high90)}</b><span>all stores</span></div>
         </div>
@@ -761,7 +814,7 @@ footer .wrap { padding-block: 20px; }
           <div class="chart-head">
             <h2>Price history</h2>
             <div class="seg" role="group" aria-label="Time range">
-              <button data-r="30">30 days</button><button data-r="60">60 days</button><button data-r="90" class="on">90 days</button>
+              ${[30, 60, 90].filter(r => r < DAYS + 30).map(r => `<button data-r="${r}" class="${r === Math.min(90, [30, 60, 90].find(x => x >= DAYS) || 90) ? "on" : ""}">${r} days</button>`).join("")}
             </div>
           </div>
           <div class="legend" id="legend"></div>
@@ -773,7 +826,7 @@ footer .wrap { padding-block: 20px; }
           <div class="tbl-wrap"><table>
             <thead><tr><th>Store</th><th class="r">Price now</th><th class="r">Off MSRP</th><th class="r">You save</th><th class="r">Store's 90-day low</th><th class="r">vs. best</th></tr></thead>
             <tbody>${p.offers.map((o, i) => `<tr class="${i === 0 ? "best" : ""}">
-              <td><span class="store-cell">${storeDot(o.store)}${storeById[o.store].name} ${i === 0 ? '<span class="badge">Best deal</span>' : ""}</span></td>
+              <td><span class="store-cell">${storeDot(o.store)}${o.url ? `<a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(storeById[o.store].name)} ↗</a>` : storeById[o.store].name} ${i === 0 ? '<span class="badge">Best deal</span>' : ""}</span></td>
               <td class="r num"><b>${money(o.now)}</b></td>
               <td class="r"><span class="disc">-${pct(o.disc)}</span></td>
               <td class="r num">${money(Math.round((p.msrp - o.now) * 100) / 100)}</td>
@@ -788,7 +841,7 @@ footer .wrap { padding-block: 20px; }
           <div class="related deals">${related.map(dealCard).join("")}</div></section>` : ""}
       </div>`;
 
-    const state = { range: 90, hidden: new Set() };
+    const state = { range: [30, 60, 90].find(x => x >= DAYS) || 90, hidden: new Set() };
     const legend = () => {
       $("#legend").innerHTML = p.offers.map(o => `<button data-st="${o.store}" class="${state.hidden.has(o.store) ? "off" : ""}" aria-pressed="${!state.hidden.has(o.store)}">${storeDot(o.store)}${storeById[o.store].name}</button>`).join("");
       document.querySelectorAll("[data-st]").forEach(b => b.onclick = () => {
@@ -814,30 +867,32 @@ footer .wrap { padding-block: 20px; }
     const host = $("#chart"); if (!host) return;
     const W = Math.max(300, host.clientWidth), H = W < 520 ? 240 : 300;
     const m = { t: 16, r: 14, b: 28, l: W < 520 ? 48 : 58 };
-    const start = DAYS - state.range;
+    const start = Math.max(0, DAYS - state.range);
+    if (DAYS - start < 2) { host.innerHTML = `<div class="chart-note">Price history builds up with each daily check. First price recorded ${fmtDate(dateAt(DAYS - 1))}; the trend line appears after the next update.</div>`; currentChart = () => {}; return; }
     const offers = p.offers.filter(o => !state.hidden.has(o.store));
-    const vals = offers.flatMap(o => o.hist.slice(start)).concat([p.msrp]);
-    const step = niceStep(Math.max(...vals) - Math.min(...vals) || p.msrp * 0.1);
-    const lo = Math.max(0, Math.floor(Math.min(...vals) / step) * step), hi = Math.ceil(Math.max(...vals) / step) * step;
+    const vs = offers.flatMap(o => vals(o.hist.slice(start))).concat([p.msrp]);
+    const step = niceStep(Math.max(...vs) - Math.min(...vs) || p.msrp * 0.1);
+    const lo = Math.max(0, Math.floor(Math.min(...vs) / step) * step), hi = Math.ceil(Math.max(...vs) / step) * step;
     const x = i => m.l + ((i - start) / (DAYS - 1 - start)) * (W - m.l - m.r);
     const y = v => m.t + (1 - (v - lo) / (hi - lo || 1)) * (H - m.t - m.b);
     let g = "";
     for (let v = lo; v <= hi + 1e-6; v += step) {
       g += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">$${Math.round(v).toLocaleString()}</text>`;
     }
-    const tickEvery = state.range === 30 ? 7 : state.range === 60 ? 14 : 21;
+    const tickEvery = Math.max(1, Math.round((DAYS - 1 - start) / 4));
     for (let i = DAYS - 1; i >= start; i -= tickEvery) g += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${fmtDate(dateAt(i))}</text>`;
     // early Black Friday window
     const ebf = Math.max(start, 72);
-    g += `<rect class="bf" x="${x(ebf)}" y="${m.t}" width="${x(DAYS - 1) - x(ebf)}" height="${H - m.t - m.b}"/>`;
-    g += `<text class="bf-lbl" x="${x(DAYS - 1) - 4}" y="${m.t + 12}" text-anchor="end">Early BF deals</text>`;
+    if (MODE === "sample") g += `<rect class="bf" x="${x(ebf)}" y="${m.t}" width="${x(DAYS - 1) - x(ebf)}" height="${H - m.t - m.b}"/>`;
+    if (MODE === "sample") g += `<text class="bf-lbl" x="${x(DAYS - 1) - 4}" y="${m.t + 12}" text-anchor="end">Early BF deals</text>`;
     g += `<line class="msrp" x1="${m.l}" x2="${W - m.r}" y1="${y(p.msrp)}" y2="${y(p.msrp)}"/><text x="${m.l + 4}" y="${y(p.msrp) - 5}">MSRP ${money(p.msrp)}</text>`;
     // step lines: later offers (pricier) first so the best sits on top
     [...offers].reverse().forEach(o => {
-      let d = "";
+      let d = "", pen = false;
       for (let i = start; i < DAYS; i++) {
+        if (o.hist[i] == null) { pen = false; continue; }
         const xx = x(i), yy = y(o.hist[i]);
-        d += i === start ? `M${xx},${yy}` : `H${xx}V${yy}`;
+        d += pen ? `H${xx}V${yy}` : `M${xx},${yy}`; pen = true;
       }
       const col = `var(${storeById[o.store].c})`;
       g += `<path d="${d}" fill="none" stroke="var(--chart-surface)" stroke-width="5" stroke-linejoin="round"/>`;
@@ -846,7 +901,7 @@ footer .wrap { padding-block: 20px; }
     });
     g += `<g id="hover" style="display:none"><line class="cross" id="hx" y1="${m.t}" y2="${H - m.b}"/><g id="hdots"></g></g>`;
     g += `<rect id="hit" x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}" fill="transparent"/>`;
-    host.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Price history for ${esc(p.name)} over ${state.range} days">${g}</svg><div class="tip" hidden></div>`;
+    host.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Price history for ${esc(p.name)} over ${DAYS - start} days">${g}</svg><div class="tip" hidden></div>`;
 
     const hit = host.querySelector("#hit"), hov = host.querySelector("#hover"), tip = host.querySelector(".tip");
     const move = ev => {
@@ -855,8 +910,8 @@ footer .wrap { padding-block: 20px; }
       const i = Math.max(start, Math.min(DAYS - 1, Math.round(start + ((px - m.l) / (W - m.l - m.r)) * (DAYS - 1 - start))));
       hov.style.display = "";
       host.querySelector("#hx").setAttribute("x1", x(i)); host.querySelector("#hx").setAttribute("x2", x(i));
-      host.querySelector("#hdots").innerHTML = offers.map(o => `<circle cx="${x(i)}" cy="${y(o.hist[i])}" r="4" fill="var(${storeById[o.store].c})" stroke="var(--chart-surface)" stroke-width="2"/>`).join("");
-      const rows = [...offers].sort((a, b) => a.hist[i] - b.hist[i]);
+      host.querySelector("#hdots").innerHTML = offers.filter(o => o.hist[i] != null).map(o => `<circle cx="${x(i)}" cy="${y(o.hist[i])}" r="4" fill="var(${storeById[o.store].c})" stroke="var(--chart-surface)" stroke-width="2"/>`).join("");
+      const rows = offers.filter(o => o.hist[i] != null).sort((a, b) => a.hist[i] - b.hist[i]);
       tip.innerHTML = `<div class="d">${dateAt(i).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</div>` +
         rows.map(o => `<div class="row"><span>${storeDot(o.store)}${storeById[o.store].name}</span><b>${money(o.hist[i])}</b></div>`).join("");
       tip.hidden = false;
@@ -893,9 +948,9 @@ footer .wrap { padding-block: 20px; }
     const cats = CATS.filter(c => c.name.toLowerCase().includes(t)).map(c => ({ href: "#c-" + c.id, a: c.name, b: "Category", r: "" }));
     const ps = PRODUCTS.filter(p => (p.brand + " " + p.name + " " + catById[p.cat].name).toLowerCase().includes(t))
       .sort((a, b) => b.disc - a.disc).slice(0, 8)
-      .map(p => ({ img: productArt(p), href: "#p-" + p.id, a: p.brand + " " + p.name, b: catById[p.cat].name + " · best at " + storeById[p.best.store].name, r: "-" + pct(p.disc) }));
+      .map(p => ({ img: artBox(p, "s-thumb"), href: "#p-" + p.id, a: p.brand + " " + p.name, b: catById[p.cat].name + " · best at " + storeById[p.best.store].name, r: "-" + pct(p.disc) }));
     const all = [...cats, ...ps]; sel = -1;
-    res.innerHTML = all.length ? all.map(r => `<a href="${r.href}"><span style="display:flex;gap:10px;align-items:center;min-width:0">${r.img ? `<span class="art-box s-thumb">${r.img}</span>` : ""}<span>${esc(r.a)}<small>${esc(r.b)}</small></span></span><span class="disc">${r.r}</span></a>`).join("")
+    res.innerHTML = all.length ? all.map(r => `<a href="${r.href}"><span style="display:flex;gap:10px;align-items:center;min-width:0">${r.img || ""}<span>${esc(r.a)}<small>${esc(r.b)}</small></span></span><span class="disc">${r.r}</span></a>`).join("")
       : `<div class="empty">No matches for "${esc(q.value)}". Try a brand or a category like "laptop".</div>`;
     res.hidden = false;
   };
@@ -923,6 +978,17 @@ footer .wrap { padding-block: 20px; }
     window.scrollTo(0, 0);
   };
   window.addEventListener("hashchange", route);
-  route();
+
+  /* ---------- boot: real prices if available, else sample ---------- */
+  (async () => {
+    let data = null;
+    try { const r = await fetch("data/prices.json", { cache: "no-store" }); if (r.ok) data = await r.json(); } catch (e) {}
+    if (!data || !data.products || !data.products.length) { try { data = JSON.parse(document.getElementById("price-data").textContent); } catch (e) {} }
+    if (data && data.products && data.products.length && data.dates && data.dates.length) loadLive(data); else loadSample();
+    if (MODE === "live") {
+      $("#foot").textContent = `Prices from ${STORES.map(st => st.name).join(" and ")}, checked daily (last check ${new Date(META.updatedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}). Discount = savings against the store's regular price. The 90-day low checks whether a deal is really the cheapest the item has been while we've tracked it. Prices can change at any time; confirm on the store's site before buying.`;
+    }
+    route();
+  })();
 })();
 </script>

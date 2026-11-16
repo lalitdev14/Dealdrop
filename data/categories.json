@@ -1,0 +1,15 @@
+{
+  "perCategory": 12,
+  "categories": [
+    { "id": "tvs", "name": "TVs", "ico": "tv", "bestbuyCategory": "abcat0101000" },
+    { "id": "laptops", "name": "Laptops", "ico": "laptop", "bestbuyCategory": "abcat0502000" },
+    { "id": "tablets", "name": "Tablets & E-readers", "ico": "laptop", "bestbuyCategory": "pcmcat209000050006" },
+    { "id": "phones", "name": "Cell Phones", "ico": "phone", "bestbuyCategory": "pcmcat209400050001" },
+    { "id": "wearables", "name": "Smartwatches", "ico": "watch", "bestbuyCategory": "pcmcat321000050004" },
+    { "id": "headphones", "name": "Headphones", "ico": "audio", "bestbuyCategory": "abcat0204000" },
+    { "id": "gaming", "name": "Video Games & Consoles", "ico": "game", "bestbuyCategory": "abcat0700000" },
+    { "id": "smarthome", "name": "Smart Home", "ico": "home", "bestbuyCategory": "pcmcat254000050002" },
+    { "id": "kitchen", "name": "Small Kitchen Appliances", "ico": "kitchen", "bestbuyCategory": "abcat0912000" },
+    { "id": "monitors", "name": "Monitors", "ico": "tv", "bestbuyCategory": "abcat0509000" }
+  ]
+}
