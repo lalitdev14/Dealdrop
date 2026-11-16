@@ -387,7 +387,7 @@ footer .wrap { padding-block: 20px; }
     MODE = "live"; META = d;
     DAYS = d.dates.length;
     END = new Date(d.dates[DAYS - 1] + "T12:00:00");
-    STORES = d.stores.map((st, i) => ({ ...st, c: "--s" + ((i % 5) + 1) }));
+    STORES = d.stores.map((st, i) => ({ ...st, c: "--s" + (st.color || (i % 5) + 1) }));
     storeById = Object.fromEntries(STORES.map(st => [st.id, st]));
     CATS = d.categories;
     setProducts(d.products);
@@ -431,6 +431,7 @@ footer .wrap { padding-block: 20px; }
   const money = v => "$" + v.toLocaleString("en-US", { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
   const pct = v => Math.round(v * 100) + "%";
   const cvar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const storeList = () => { const n = STORES.map(st => st.name); return n.length > 1 ? n.slice(0, -1).join(", ") + " and " + n[n.length - 1] : n[0]; };
   const storeDot = id => `<span class="dot" style="background:var(${storeById[id].c})"></span>`;
 
   /* ---------- product illustrations (inline SVG, no external images) ---------- */
@@ -673,7 +674,7 @@ footer .wrap { padding-block: 20px; }
         <div class="hero-copy">
           <span class="eyebrow">Black Friday 2026 · ${MODE === "live" ? "live prices" : "demo with sample prices"}</span>
           <h1>The deepest markdowns, store by store.</h1>
-          <p class="sub">We track ${PRODUCTS.length} ${MODE === "live" ? "of the most discounted products at " + STORES.map(st => st.name).join(" and ") : "popular products across " + STORES.length + " stores"} and rank them by discount off list price. Open any product to see ${MODE === "live" ? "its price history (up to 90 days, growing daily)" : "90 days of price history"} and which store is cheapest right now.</p>
+          <p class="sub">We track ${PRODUCTS.length} ${MODE === "live" ? "of the most discounted products at " + storeList() : "popular products across " + STORES.length + " stores"} and rank them by discount off list price. Open any product to see ${MODE === "live" ? "its price history (up to 90 days, growing daily)" : "90 days of price history"} and which store is cheapest right now.</p>
           <div class="stats">
             <div><b class="num">${pct(maxD)}</b>biggest discount</div>
             <div><b class="num">${pct(avg)}</b>average off MSRP</div>
@@ -986,7 +987,7 @@ footer .wrap { padding-block: 20px; }
     if (!data || !data.products || !data.products.length) { try { data = JSON.parse(document.getElementById("price-data").textContent); } catch (e) {} }
     if (data && data.products && data.products.length && data.dates && data.dates.length) loadLive(data); else loadSample();
     if (MODE === "live") {
-      $("#foot").textContent = `Prices from ${STORES.map(st => st.name).join(" and ")}, checked daily (last check ${new Date(META.updatedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}). Discount = savings against the store's regular price. The 90-day low checks whether a deal is really the cheapest the item has been while we've tracked it. Prices can change at any time; confirm on the store's site before buying.`;
+      $("#foot").textContent = `Prices from ${storeList()}, checked daily (last check ${new Date(META.updatedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}). Discount = savings against Best Buy's regular price, used as the list price for every store. The 90-day low checks whether a deal is really the cheapest the item has been while we've tracked it. Prices can change at any time; confirm on the store's site before buying.${META.amazonAssociate ? " As an Amazon Associate we earn from qualifying purchases. Amazon prices are accurate as of the time shown and are subject to change." : ""}`;
     }
     route();
   })();
