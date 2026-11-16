@@ -1,5 +1,7 @@
 # DealDrop – Black Friday tracker
 
+Live site: https://lalitdev14.github.io/Dealdrop/ (GitHub Pages from `main`, rebuilt after every deals update).
+
 A static site that ranks Black Friday deals by discount, with categories, per-store price history and a "highest discount store" pick for each product.
 
 - **Home**: countdown to Black Friday, category grid, top 12 highest discounts (sort by % off or $ saved).
