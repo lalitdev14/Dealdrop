@@ -4,14 +4,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
 /* Layout: price-tag motif. Sticky header with search, then route views: home (countdown + categories + top deals) → category list → product (store table + price-history chart). */
 :root {
-  --bg: #f6f7f9;
+  --bg: #ffffff;
   --surface: #ffffff;
-  --surface-2: #eef0f4;
-  --line: #dde1e8;
+  --surface-2: #f4f5f7;
+  --line: #e8eaee;
   --fg: #12151c;
   --fg-2: #4a5160;
   --muted: #747b8a;
@@ -26,30 +26,11 @@
   --art-bg: #eceff4;
   --art-bg-2: #f7f8fa;
   --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4;
-  --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --f-display: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
-  --r: 10px;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0f1218; --surface: #171b23; --surface-2: #1f2430; --line: #2c3342;
-    --fg: #eef0f4; --fg-2: #b6bcc9; --muted: #8a92a3;
-    --accent: #ff4d63; --accent-ink: #16080b; --accent-soft: #3a1820;
-    --good: #4cc77f; --good-soft: #13301f; --warn: #f0b04a; --warn-soft: #33270f;
-    --chart-surface: #171b23; --art-bg: #2a303c; --art-bg-2: #343b49;
-    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0f1218; --surface: #171b23; --surface-2: #1f2430; --line: #2c3342;
-  --fg: #eef0f4; --fg-2: #b6bcc9; --muted: #8a92a3;
-  --accent: #ff4d63; --accent-ink: #16080b; --accent-soft: #3a1820;
-  --good: #4cc77f; --good-soft: #13301f; --warn: #f0b04a; --warn-soft: #33270f;
-  --chart-surface: #171b23; --art-bg: #2a303c; --art-bg-2: #343b49;
-  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
-  color-scheme: dark;
+  --r: 12px;
+  color-scheme: light;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -64,19 +45,14 @@ a { color: inherit; }
 button { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
-.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1760px; margin: 0 auto; padding-left: max(clamp(16px, 3vw, 56px), env(safe-area-inset-left, 0px)); padding-right: max(clamp(16px, 3vw, 56px), env(safe-area-inset-right, 0px)); }
 
 /* Header */
 header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line); }
 header.top .wrap { display: flex; align-items: center; gap: 16px; padding-block: 12px; flex-wrap: wrap; }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-.brand-tag {
-  font: 800 13px/1 var(--f-display); font-stretch: 85%; letter-spacing: .06em; text-transform: uppercase;
-  background: var(--accent); color: var(--accent-ink); padding: 7px 10px 7px 16px; position: relative;
-  clip-path: polygon(10px 0, 100% 0, 100% 100%, 10px 100%, 0 50%);
-}
-.brand-tag::before { content: ""; position: absolute; left: 7px; top: 50%; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%; background: var(--surface); }
-.brand-name { font: 800 20px/1 var(--f-display); font-stretch: 90%; letter-spacing: -.01em; }
+.brand-name { font: 700 21px/1 var(--f-display); letter-spacing: -.02em; }
+.brand-name em { font-style: normal; color: var(--accent); }
 .search { flex: 1 1 260px; position: relative; min-width: 0; }
 .search input {
   width: 100%; padding: 10px 14px 10px 38px; border-radius: 999px; border: 1px solid var(--line);
@@ -99,28 +75,26 @@ nav.cats a { white-space: nowrap; text-decoration: none; font-size: 13px; font-w
 nav.cats a:hover { background: var(--surface-2); color: var(--fg); }
 nav.cats a.on { background: var(--fg); color: var(--bg); }
 
-main { padding-block: 24px 64px; }
+main { padding-block: clamp(20px, 3vw, 40px) 64px; }
 .crumbs { font-size: 13px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
 .crumbs a { color: var(--fg-2); text-decoration: none; }
 .crumbs a:hover { text-decoration: underline; }
 h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
-h1 { font-size: clamp(30px, 5vw, 52px); font-weight: 900; font-stretch: 80%; line-height: .98; letter-spacing: -.01em; }
-h2 { font-size: 22px; font-weight: 800; font-stretch: 90%; }
-.eyebrow { font: 600 12px/1 var(--f-body); letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+h1 { font-size: clamp(26px, 3vw, 40px); font-weight: 700; line-height: 1.15; letter-spacing: -.02em; }
+h2 { font-size: clamp(18px, 1.6vw, 22px); font-weight: 650; letter-spacing: -.01em; }
+.eyebrow { font: 600 13px/1 var(--f-body); color: var(--accent); }
 .sub { color: var(--fg-2); max-width: 62ch; }
 section + section { margin-top: 40px; }
 .sec-head { display: flex; align-items: end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
 .sec-head p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
 
 /* Hero */
-.hero { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; align-items: stretch; }
+.hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; max-width: 760px; }
 .hero-copy { display: flex; flex-direction: column; gap: 14px; justify-content: center; }
-.countdown { background: var(--fg); color: var(--bg); border-radius: var(--r); padding: 24px 20px; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+.countdown { display: none; }
+.cd-line { margin: 0; font-size: 14px; color: var(--fg-2); }
+.cd-line b { font: 600 14px var(--f-mono); color: var(--fg); }
 .countdown .lbl { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; opacity: .7; }
-.cd-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.cd-row div { text-align: center; }
-.cd-row b { display: block; font: 700 clamp(26px, 4vw, 38px)/1 var(--f-mono); font-variant-numeric: tabular-nums; }
-.cd-row span { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; opacity: .65; }
 .stats { display: flex; gap: 22px; flex-wrap: wrap; font-size: 13px; color: var(--fg-2); }
 .stats b { display: block; font: 700 22px/1.1 var(--f-mono); color: var(--fg); }
 .sample-note { font-size: 12px; color: var(--muted); }
@@ -134,26 +108,22 @@ section + section { margin-top: 40px; }
 }
 .cat-card:hover { border-color: var(--fg-2); transform: translateY(-2px); }
 .cat-card .ico { width: 40px; height: 40px; border-radius: 10px; background: var(--surface-2); display: grid; place-items: center; color: var(--fg); }
-.cat-card h3 { font-size: 17px; font-weight: 800; font-stretch: 92%; }
+.cat-card h3 { font-size: 17px; font-weight: 800; }
 .cat-card .meta { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: var(--muted); }
 .cat-card .meta b { color: var(--accent); font-family: var(--f-mono); font-size: 15px; }
 
 /* Deal list */
-.deals { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.deals { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: clamp(12px, 1.2vw, 20px); }
 .deal {
   position: relative; display: flex; flex-direction: column; gap: 10px; padding: 16px; background: var(--surface);
   border: 1px solid var(--line); border-radius: var(--r); text-decoration: none; transition: border-color .15s;
 }
-.deal:hover { border-color: var(--fg-2); }
+.deal:hover { border-color: #d3d7de; box-shadow: 0 6px 20px rgba(16, 24, 40, .06); }
 .deal-top { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
 .thumb { width: 54px; height: 54px; border-radius: 10px; background: var(--surface-2); display: grid; place-items: center; flex: none; color: var(--fg-2); }
-.tag {
-  font: 700 14px/1 var(--f-mono); background: var(--accent); color: var(--accent-ink); padding: 6px 8px 6px 14px; white-space: nowrap;
-  clip-path: polygon(8px 0, 100% 0, 100% 100%, 8px 100%, 0 50%); position: relative;
-}
-.tag::before { content: ""; position: absolute; left: 5px; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--surface); }
+.tag { font: 600 13px/1 var(--f-body); background: var(--accent); color: var(--accent-ink); padding: 5px 8px; border-radius: 6px; white-space: nowrap; }
 .art-box { position: relative; background: radial-gradient(circle at 50% 40%, var(--art-bg-2), var(--art-bg)); border-radius: 8px; display: grid; place-items: center; overflow: hidden; }
-.deal .art-box { aspect-ratio: 16 / 10; }
+.deal .art-box { aspect-ratio: 4 / 3; }
 .deal .art-box .tag { position: absolute; top: 10px; right: 10px; }
 svg.art { width: 62%; height: auto; max-height: 100%; display: block; transition: transform .25s; }
 .deal:hover svg.art { transform: scale(1.06) rotate(-1deg); }
@@ -220,7 +190,7 @@ select { font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; 
 
 /* Product page */
 .p-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 20px; align-items: start; margin-bottom: 24px; }
-.p-head h1 { font-size: clamp(26px, 4vw, 40px); font-stretch: 85%; }
+.p-head h1 { font-size: clamp(26px, 4vw, 40px); }
 .best-box { background: var(--surface); border: 2px solid var(--accent); border-radius: var(--r); padding: 16px 18px; min-width: 240px; display: flex; flex-direction: column; gap: 8px; }
 .best-box .lbl { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
 .best-box .price { font-size: 32px; }
@@ -277,13 +247,14 @@ tr.best td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .related { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 /* Hot deals from every store */
 .hot { cursor: default; }
-.hot .art-box { aspect-ratio: 16 / 10; text-decoration: none; }
+.hot .art-box { aspect-ratio: 4 / 3; text-decoration: none; background: #fff; }
 .hot .art-box img.pic { width: 86%; height: 86%; }
 .hot h3 a { text-decoration: none; }
 .hot h3 a:hover { text-decoration: underline; }
-.hot .tag.soft { background: var(--fg); color: var(--bg); }
+.hot .tag.soft { background: var(--surface-2); color: var(--fg); }
 .hot-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.hot-actions .btn { flex: 1 1 auto; }
+.hot-actions .btn { flex: 1 1 auto; background: var(--surface); color: var(--fg); border: 1px solid var(--line); font-weight: 600; }
+.hot-actions .btn:hover { background: var(--fg); color: #fff; border-color: var(--fg); }
 .code-btn { display: inline-flex; align-items: center; gap: 6px; border: 1.5px dashed var(--accent); background: var(--accent-soft); color: var(--fg); border-radius: 8px; padding: 8px 10px; font: 700 13px/1 var(--f-mono); cursor: pointer; }
 .code-btn small { font: 500 11px/1 var(--f-body); color: var(--fg-2); }
 .src { font-size: 12px; color: var(--fg-2); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
@@ -291,6 +262,14 @@ tr.best td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .chips button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; font-size: 13px; cursor: pointer; color: var(--fg-2); }
 .chips button.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+@media (max-width: 600px) {
+  .deals { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .deal { padding: 10px; gap: 8px; }
+  .deal h3 { font-size: 13.5px; }
+  .price { font-size: 17px; }
+  .hot-actions .btn { font-size: 13px; padding: 8px 10px; }
+  .code-btn { padding: 6px 8px; font-size: 12px; }
+}
 .disclose { font-size: 12px; color: var(--fg-2); margin: 10px 0 0; }
 footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
 footer .wrap { padding-block: 20px; }
@@ -312,8 +291,7 @@ footer .wrap { padding-block: 20px; }
 <header class="top">
   <div class="wrap">
     <a class="brand" href="#home" aria-label="DealDrop home">
-      <span class="brand-tag">Black Friday</span>
-      <span class="brand-name">DealDrop</span>
+      <span class="brand-name">Deal<em>Drop</em></span>
     </a>
     <div class="search">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -520,7 +498,7 @@ footer .wrap { padding-block: 20px; }
     const img = d.image ? `<img class="pic" src="${esc(d.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : icon("tv", 40);
     return `<article class="deal hot">
       ${a(`${img}${off}`, "art-box" + (d.image ? " has-pic" : ""))}
-      <div><div class="brandline">${esc(d.store || "Online")} · ${esc((hotCatById[d.cat] || {}).name || "Deal")} · ${ago(d.posted)}</div><h3>${a(esc(d.name || d.title))}</h3></div>
+      <div><div class="brandline">${esc(d.store || "Online")} · ${ago(d.posted)}</div><h3>${a(esc(d.name || d.title))}</h3></div>
       <div class="price-row">${d.price != null ? `<span class="price">${d.upTo ? "from " : ""}${money(d.price)}</span>` : ""}${d.was ? `<span class="was">${money(d.was)}</span>` : ""}${d.freeShip ? '<span class="pill good">Free shipping</span>' : ""}</div>
       <div class="hot-actions">
         ${d.code ? `<button class="code-btn" data-code="${esc(d.code)}" title="Copy promo code">${esc(d.code)} <small>copy</small></button>` : ""}
@@ -801,7 +779,7 @@ footer .wrap { padding-block: 20px; }
   /* ---------- views ---------- */
   const catNav = active => {
     $("#catnav").innerHTML = `<a href="#home" class="${!active ? "on" : ""}">All deals</a>` +
-      (HOT.length ? `<a href="#hot" class="${active === "hot" ? "on" : ""}">Hot deals · every store</a>` : "") +
+      (HOT.length ? `<a href="#hot" class="${active === "hot" ? "on" : ""}">Hot deals</a>` : "") +
       CATS.map(c => `<a href="#c-${c.id}" class="${active === c.id ? "on" : ""}">${esc(c.name)}</a>`).join("");
     const on = $("#catnav .on"); if (on && active) on.scrollIntoView({ block: "nearest", inline: "center" });
   };
@@ -810,7 +788,7 @@ footer .wrap { padding-block: 20px; }
   const hotSection = (n = 12) => HOT.length ? `
       <section>
         <div class="sec-head">
-          <div><h2>Hottest deals across the web</h2><p>${HOT.length} live deals from ${new Set(HOT.map(d => d.store).filter(Boolean)).size} stores, updated ${updatedAgo()}.</p></div>
+          <div><h2>Hottest right now</h2><p>Updated ${updatedAgo()}</p></div>
           <a href="#hot" style="font-size:14px;font-weight:600;color:var(--accent);text-decoration:none">See all ${HOT.length} →</a>
         </div>
         <div class="deals">${HOT.slice(0, n).map((d, i) => hotCard(d, i)).join("")}</div>
@@ -824,21 +802,18 @@ footer .wrap { padding-block: 20px; }
       $("#view").innerHTML = `
         <section class="hero">
           <div class="hero-copy">
-            <span class="eyebrow">Black Friday 2026 · live deals</span>
-            <h1>The best deals on the internet, in one place.</h1>
-            <p class="sub">The hottest deals at Amazon, Walmart, Lowe's, Best Buy, Home Depot, Target, Costco and more, updated around the clock and ranked by popularity, discount and freshness. Every link goes straight to the store.</p>
+            <span class="eyebrow">Live deals</span>
+            <h1>Today's best deals, every store.</h1>
+            <p class="sub">Amazon, Walmart, Lowe's, Best Buy, Home Depot, Target, Costco and more, ranked and updated around the clock.</p>
             <div class="stats">
               <div><b class="num">${HOT.length}</b>live deals</div>
               <div><b class="num">${stores}</b>stores</div>
               <div><b class="num">${withPct.length ? pct(Math.max(...withPct.map(d => d.pct))) : "—"}</b>biggest discount</div>
               <div><b class="num">${HOT.filter(d => d.code).length}</b>promo codes</div>
             </div>
+            <p class="cd-line" aria-live="polite">Black Friday (Nov 27) in <b id="cd"></b></p>
           </div>
-          <div class="countdown" aria-live="polite">
-            <span class="lbl">Black Friday starts in</span>
-            <div class="cd-row" id="cd"></div>
-            <span class="lbl" style="opacity:.6">Friday, Nov 27 · early deals are live</span>
-          </div>
+
         </section>
         ${hotSection(24)}`;
       wireCodes(); tick();
@@ -859,12 +834,9 @@ footer .wrap { padding-block: 20px; }
             <div><b class="num">${pct(avg)}</b>average off MSRP</div>
             <div><b class="num">${real}</b>at a 90-day low</div>
           </div>
+          <p class="cd-line" aria-live="polite">Black Friday (Nov 27) in <b id="cd"></b></p>
         </div>
-        <div class="countdown" aria-live="polite">
-          <span class="lbl">Black Friday starts in</span>
-          <div class="cd-row" id="cd"></div>
-          <span class="lbl" style="opacity:.6">Friday, Nov 27 · early deals are live</span>
-        </div>
+
       </section>
       ${hotSection(8)}
 
@@ -1117,8 +1089,7 @@ footer .wrap { padding-block: 20px; }
       const el = $("#cd"); if (!el) return clearInterval(cdTimer);
       const ms = Math.max(0, BF - new Date());
       const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, mi = Math.floor(ms / 6e4) % 60, s = Math.floor(ms / 1e3) % 60;
-      el.innerHTML = ms ? [[d, "days"], [h, "hrs"], [mi, "min"], [s, "sec"]].map(([n, l]) => `<div><b>${String(n).padStart(2, "0")}</b><span>${l}</span></div>`).join("")
-        : `<div style="grid-column:1/-1"><b>LIVE</b><span>Black Friday deals are on</span></div>`;
+      el.textContent = ms ? `${d}d ${h}h ${String(mi).padStart(2, "0")}m ${String(s).padStart(2, "0")}s` : "now: deals are live";
     };
     run(); cdTimer = setInterval(run, 1000);
   }
