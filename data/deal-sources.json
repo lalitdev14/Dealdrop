@@ -1,7 +1,22 @@
 {
-  "feeds": {
-    "slickdeals": { "enabled": true, "url": "https://slickdeals.net/newsearch.php?mode=frontpage&searcharea=deals&searchin=first&rss=1" },
-    "dealnews": { "enabled": true, "url": "https://www.dealnews.com/?rss=1" },
-    "reddit": { "enabled": true, "url": "https://www.reddit.com/r/buildapcsales/top/.rss?t=day" }
-  }
+  "_comment": "Deal feeds read every 3 hours. type: slickdeals | dealnews | reddit. store: keep only deals from that store. ranked: the feed is ordered by hotness (otherwise by date). Set enabled to false to switch one off.",
+  "feeds": [
+    { "id": "slickdeals", "type": "slickdeals", "enabled": true, "ranked": true, "url": "https://slickdeals.net/newsearch.php?mode=frontpage&searcharea=deals&searchin=first&rss=1" },
+    { "id": "slickdeals-popular", "type": "slickdeals", "enabled": true, "ranked": true, "url": "https://slickdeals.net/newsearch.php?mode=popdeals&searcharea=deals&searchin=first&rss=1" },
+    { "id": "slickdeals-amazon", "type": "slickdeals", "enabled": true, "store": "Amazon", "url": "https://slickdeals.net/newsearch.php?q=amazon&searcharea=deals&searchin=first&rss=1" },
+    { "id": "slickdeals-walmart", "type": "slickdeals", "enabled": true, "store": "Walmart", "url": "https://slickdeals.net/newsearch.php?q=walmart&searcharea=deals&searchin=first&rss=1" },
+    { "id": "slickdeals-lowes", "type": "slickdeals", "enabled": true, "store": "Lowe's", "url": "https://slickdeals.net/newsearch.php?q=lowes&searcharea=deals&searchin=first&rss=1" },
+    { "id": "slickdeals-target", "type": "slickdeals", "enabled": true, "store": "Target", "url": "https://slickdeals.net/newsearch.php?q=target&searcharea=deals&searchin=first&rss=1" },
+    { "id": "slickdeals-homedepot", "type": "slickdeals", "enabled": true, "store": "Home Depot", "url": "https://slickdeals.net/newsearch.php?q=home+depot&searcharea=deals&searchin=first&rss=1" },
+    { "id": "slickdeals-bestbuy", "type": "slickdeals", "enabled": true, "store": "Best Buy", "url": "https://slickdeals.net/newsearch.php?q=best+buy&searcharea=deals&searchin=first&rss=1" },
+    { "id": "slickdeals-costco", "type": "slickdeals", "enabled": true, "store": "Costco", "url": "https://slickdeals.net/newsearch.php?q=costco&searcharea=deals&searchin=first&rss=1" },
+    { "id": "dealnews", "type": "dealnews", "enabled": true, "ranked": true, "url": "https://www.dealnews.com/?rss=1" },
+    { "id": "dealnews-amazon", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s313/Amazon/?rss=1" },
+    { "id": "dealnews-walmart", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s321/Walmart/?rss=1" },
+    { "id": "dealnews-lowes", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s1308/Lowes/?rss=1" },
+    { "id": "dealnews-bestbuy", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s560/Best-Buy/?rss=1" },
+    { "id": "dealnews-ebay", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s50/eBay/?rss=1" },
+    { "id": "dealnews-newegg", "type": "dealnews", "enabled": true, "url": "https://www.dealnews.com/s504/Newegg/?rss=1" },
+    { "id": "reddit", "type": "reddit", "enabled": true, "ranked": true, "url": "https://www.reddit.com/r/buildapcsales/top/.rss?t=day" }
+  ]
 }
