@@ -178,7 +178,10 @@ async function findCategory(term) {
 }
 
 async function main() {
-  if (!env.BESTBUY_API_KEY && !MOCK) { console.error("Set BESTBUY_API_KEY (free at https://developer.bestbuy.com)."); process.exit(1); }
+  if (!env.BESTBUY_API_KEY && !MOCK) {
+    if (process.argv.includes("--skip-if-unconfigured")) { log("skipped: BESTBUY_API_KEY not set (hot deals still update on their own)"); return; }
+    console.error("Set BESTBUY_API_KEY (free at https://developer.bestbuy.com)."); process.exit(1);
+  }
   const fi = process.argv.indexOf("--find-category");
   if (fi > 0) return findCategory(process.argv[fi + 1] || "");
 

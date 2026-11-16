@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: update-prices
+  group: update-data
   cancel-in-progress: false
 
 jobs:
@@ -30,15 +30,17 @@ jobs:
           AMAZON_ACCESS_KEY: ${{ secrets.AMAZON_ACCESS_KEY }}
           AMAZON_SECRET_KEY: ${{ secrets.AMAZON_SECRET_KEY }}
           AMAZON_PARTNER_TAG: ${{ secrets.AMAZON_PARTNER_TAG }}
-        run: node scripts/update-prices.mjs
+        run: node scripts/update-prices.mjs --skip-if-unconfigured
       - name: Commit updated prices
         run: |
+          [ -f data/prices.json ] || { echo "No prices.json yet (BESTBUY_API_KEY not set)"; exit 0; }
           git config user.name "dealdrop-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/prices.json
           git diff --cached --quiet && echo "No price changes" && exit 0
           git commit -m "Update Black Friday prices ($(date -u +%F))"
-          git push
+          for i in 1 2 3; do git pull --rebase -X theirs origin "${GITHUB_REF_NAME}" && git push && exit 0; sleep 5; done
+          exit 1
       - name: Email price alerts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
