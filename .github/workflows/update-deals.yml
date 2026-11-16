@@ -15,6 +15,7 @@ concurrency:
 jobs:
   deals:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,7 +31,7 @@ jobs:
         run: |
           git config user.name "dealdrop-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/deals.json
+          git add data/deals.json data/feed-state.json
           git diff --cached --quiet && echo "No deal changes" && exit 0
           git commit -m "Update hot deals ($(date -u +'%F %H:%M') UTC)"
           for i in 1 2 3; do git pull --rebase -X theirs origin "${GITHUB_REF_NAME}" && git push && exit 0; sleep 5; done
