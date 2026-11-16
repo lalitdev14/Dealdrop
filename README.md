@@ -7,6 +7,44 @@ A static site that ranks Black Friday deals by discount, with categories, per-st
 - **Product**: highest-discount store with a Buy link, price-history chart, store comparison table, a verdict on whether the price is really the lowest seen, and a **price alert** form.
 - **My alerts**: every target set on this device, with the current best price and "Target reached" status.
 
+- **Hot deals**: the best current deals from every store on the internet, refreshed every 3 hours, with promo codes and store links that carry DealDrop's affiliate code.
+
+**Live site:** https://raw.githack.com/lalitdev14/Dealdrop/main/index.html (served straight from this repository; see [Hosting](#hosting) for GitHub Pages).
+
+## Hot deals from every store (no keys needed)
+
+`scripts/fetch-deals.mjs` runs every 3 hours (`.github/workflows/update-deals.yml`) and writes `data/deals.json`:
+
+1. **Collects** deals from public deal feeds (Slickdeals frontpage, DealNews, r/buildapcsales) and, when keys are set,
+   from affiliate networks (FMTC covers deals from every major network; Impact covers brands you have joined).
+   Each feed can be switched off in `data/deal-sources.json`.
+2. **Merges** the same deal posted on several sites (by Amazon ASIN or title) and keeps every source credited.
+3. **Ranks** by community votes, editor picks, "best-ever price" notes, discount depth, agreement between sites and freshness.
+   Deals older than 72 hours or past their end date drop off.
+
+The page shows them on the home page and under **Hot deals · every store** (sort, filter by store or category, "with promo code"
+only, one-click code copy). Each deal links to the store when the feed gives a direct store link, otherwise to the original post.
+While there is no Best Buy key, the home page shows only these real deals instead of the demo catalog.
+
+Run it locally: `node scripts/fetch-deals.mjs`
+
+## DealDrop's affiliate code on every store link
+
+Outbound store links are rewritten in the browser from the public IDs in `data/site-config.json`:
+
+| Field | What it does | Where to get it |
+|---|---|---|
+| `amazonTag` | Adds `?tag=…` to every Amazon link, and turns Amazon deals found by ASIN into direct Amazon links | Amazon Associates (free): https://affiliate-program.amazon.com |
+| `sovrnKey` | Wraps every other store link (Best Buy, Walmart, Target, Home Depot, eBay, …, ~50,000 stores) in a Sovrn Commerce redirect that pays a commission | Sovrn Commerce (free): https://www.sovrn.com/publishers/commerce/ → Commerce settings → Sites → API key |
+
+Both values are public by design (they appear in every link), so they live in the repository, not in secrets.
+Links that already carry an affiliate code (FMTC, Impact, Walmart/Amazon API links) are left alone. The site shows a
+commission disclosure next to the deals as soon as either field is set.
+
+Optional affiliate-network deal feeds (repository **secrets**): `FMTC_API_TOKEN` (https://www.fmtc.co), or
+`IMPACT_ACCOUNT_SID` + `IMPACT_AUTH_TOKEN` (https://impact.com → Settings → API). Their deals arrive with your
+affiliate links already built in.
+
 ## Real prices (US: Best Buy, Walmart, Amazon)
 
 `scripts/update-prices.mjs` runs once a day:
@@ -34,7 +72,8 @@ Add these as GitHub repository secrets (**Settings → Secrets and variables →
 | Amazon | `AMAZON_ACCESS_KEY`, `AMAZON_SECRET_KEY`, `AMAZON_PARTNER_TAG` (e.g. `yourtag-20`) | Amazon Associates account → Tools → Product Advertising API. Amazon only grants API access after the Associates account has made qualifying sales. |
 
 Then make sure this code is on the default branch (GitHub only runs scheduled workflows from there) and
-open **Actions → Update Black Friday prices → Run workflow** for the first update. After that it runs
+open **Actions → Update Black Friday prices → Run workflow** for the first update. Until `BESTBUY_API_KEY` is set,
+the job skips itself without failing. After that it runs
 daily at 11:17 UTC and commits the new `data/prices.json`.
 
 Run it locally:
@@ -104,6 +143,9 @@ ALERTS_MOCK_FILE=alerts.json EMAIL_DRY_RUN=1 SITE_URL=https://example.com/ node 
 ```
 
 ### Hosting
+
+Without any setup the site runs at https://raw.githack.com/lalitdev14/Dealdrop/main/index.html, which serves the files
+of the `main` branch directly (including the deals the workflow commits every 3 hours).
 
 Serve this repository from any static host (GitHub Pages, Netlify, Vercel) so
 that `data/prices.json` sits next to `index.html`. Opening `index.html` straight from disk can't
